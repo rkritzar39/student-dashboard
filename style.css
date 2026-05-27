@@ -1,0 +1,37 @@
+body{
+margin:0;
+font-family:Arial;
+background:#121212;
+color:white;
+}
+
+.sidebar{
+position:fixed;
+width:220px;
+height:100vh;
+background:#1f1f1f;
+padding:20px;
+}
+
+.sidebar h2{
+color:#4da3ff;
+}
+
+.sidebar a{
+display:block;
+color:white;
+text-decoration:none;
+margin:20px 0;
+}
+
+.main{
+margin-left:240px;
+padding:20px;
+}
+
+.card{
+background:#1e1e1e;
+padding:20px;
+border-radius:15px;
+margin-bottom:20px;
+}
