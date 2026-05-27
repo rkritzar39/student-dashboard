@@ -3,17 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Academic Portal Pro</title>
+    <title>Academic Portal | LMS Pro</title>
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body class="dark-theme">
-    
-    <!-- Admin Login Modal -->
+
+    <!-- ADMIN LOGIN MODAL -->
     <div id="admin-modal" class="modal">
         <div class="modal-content card">
-            <h2>Admin Authentication</h2>
-            <p>Enter your secret access key</p>
+            <h2>Admin Login</h2>
+            <p>Access management console</p>
             <input type="password" id="admin-pass-input" placeholder="Passcode (Default: 1234)">
             <div class="modal-actions">
                 <button class="btn btn-secondary" onclick="closeAdminModal()">Cancel</button>
@@ -22,46 +22,51 @@
         </div>
     </div>
 
-    <div class="app-wrapper">
-        <!-- Sidebar -->
+    <div class="app-container">
+        <!-- SIDEBAR -->
         <aside class="sidebar" id="sidebar">
             <div class="sidebar-header">
-                <div class="logo"><i class="fas fa-university"></i> <span>UniPortal</span></div>
+                <div class="logo"><i class="fas fa-graduation-cap"></i> <span>UniPortal</span></div>
                 <button class="mobile-close" onclick="toggleSidebar()"><i class="fas fa-times"></i></button>
             </div>
             
             <nav class="nav-menu">
-                <div class="nav-item active" onclick="navigate('dashboard')"><i class="fas fa-home"></i> <span>Dashboard</span></div>
-                <div class="nav-item" onclick="navigate('courses')"><i class="fas fa-book-open"></i> <span>My Courses</span></div>
-                <div class="nav-item" onclick="navigate('assignments')"><i class="fas fa-tasks"></i> <span>Assignments</span></div>
-                <div class="nav-item" onclick="navigate('grades')"><i class="fas fa-graduation-cap"></i> <span>Final Grades</span></div>
-                <div class="nav-item" onclick="navigate('calendar')"><i class="fas fa-calendar"></i> <span>Calendar</span></div>
+                <div class="nav-item active" data-view="dashboard" onclick="navigate('dashboard')"><i class="fas fa-home"></i> <span>Dashboard</span></div>
+                <div class="nav-item" data-view="courses" onclick="navigate('courses')"><i class="fas fa-book"></i> <span>Courses</span></div>
+                <div class="nav-item" data-view="assignments" onclick="navigate('assignments')"><i class="fas fa-list-check"></i> <span>Assignments</span></div>
+                <div class="nav-item" data-view="grades" onclick="navigate('grades')"><i class="fas fa-chart-line"></i> <span>Grades</span></div>
+                <div class="nav-item" data-view="ai" onclick="navigate('ai')"><i class="fas fa-robot"></i> <span>AI Buddy</span></div>
+                <div class="nav-item" data-view="profile" onclick="navigate('profile')"><i class="fas fa-user-circle"></i> <span>My Profile</span></div>
+                
                 <div class="nav-separator"></div>
-                <div class="nav-item admin-only-btn" id="admin-nav" onclick="navigate('admin')" style="display:none;"><i class="fas fa-user-shield"></i> <span>Admin Console</span></div>
+                <div class="nav-item admin-btn" id="admin-nav" onclick="navigate('admin')" style="display:none;"><i class="fas fa-user-shield"></i> <span>Admin Panel</span></div>
             </nav>
 
             <div class="sidebar-footer">
-                <button class="admin-lock-btn" onclick="openAdminModal()" id="lock-icon">
-                    <i class="fas fa-lock"></i> Admin Login
+                <button class="lock-btn" id="lock-btn" onclick="openAdminModal()">
+                    <i class="fas fa-lock"></i> <span>Admin Login</span>
                 </button>
             </div>
         </aside>
 
-        <!-- Main Area -->
+        <!-- MAIN AREA -->
         <main class="main-content">
             <header class="top-bar">
-                <button class="menu-trigger" onclick="toggleSidebar()"><i class="fas fa-bars"></i></button>
-                <div class="page-title" id="current-page-title">Dashboard</div>
-                <div class="user-tools">
-                    <div class="real-time-clock" id="clock">00:00:00</div>
-                    <div class="notifications"><i class="fas fa-bell"></i><span class="badge" id="notif-count">0</span></div>
-                    <div class="profile-pill" id="user-profile"></div>
+                <button class="menu-btn" onclick="toggleSidebar()"><i class="fas fa-bars"></i></button>
+                <div class="page-info">
+                    <h2 id="view-title">Dashboard</h2>
+                </div>
+                <div class="header-right">
+                    <div class="clock" id="clock">00:00:00</div>
+                    <div class="profile-pill" onclick="navigate('profile')" id="pfp-pill">
+                        <!-- Filled by JS -->
+                    </div>
                 </div>
             </header>
 
-            <section id="view-container" class="view-container">
-                <!-- Dynamic Content Here -->
-            </section>
+            <div id="content-area" class="content-area">
+                <!-- DYNAMIC CONTENT LOADED HERE -->
+            </div>
         </main>
     </div>
 
