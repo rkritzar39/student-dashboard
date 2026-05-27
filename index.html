@@ -1,224 +1,233 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <meta name="description" content="Nexus LMS - Advanced University Student & Gradebook Architecture" />
-    <title>Nexus LMS | Enterprise Academic Portal</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
+  <meta name="description" content="Nexus LMS - Advanced University Student & Gradebook Architecture" />
+  <title>Nexus LMS | Enterprise Academic Portal</title>
 
-    <link rel="stylesheet" href="style.css" />
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  <link rel="stylesheet" href="style.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
 </head>
 <body class="dark-theme">
 
-    <!-- Profile Picture File Upload Stream Pipeline -->
-    <input type="file" id="profile-upload" accept="image/png, image/jpeg, image/jpg" style="display: none;" onchange="handleProfileUpload(event)">
+  <!-- Profile Picture File Upload -->
+  <input type="file" id="profile-upload" accept="image/png, image/jpeg, image/jpg" style="display:none" onchange="handleProfileUpload(event)">
 
-    <!-- Authentication Gate Modal -->
-    <div id="admin-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
-        <div class="modal-content glass-card">
-            <div class="modal-header">
-                <h2 id="modal-title"><i class="fas fa-shield-halved"></i> Gatekeeper Security</h2>
-                <button class="close-btn" onclick="closeAdminModal()" aria-label="Close Authentication Gate">&times;</button>
-            </div>
-            <p class="modal-desc">Elevate your access token to mutate grade sheets, override attendance logs, append calendar matrices, and broadcast emergency notifications.</p>
-            <div class="form-group">
-                <label for="admin-pass" class="hidden">Administrative Passcode</label>
-                <input type="password" id="admin-pass" placeholder="Enter Security Code (1234)" onkeypress="if(event.key === 'Enter') verifyAdmin()" />
-            </div>
-            <button class="btn btn-primary btn-full" onclick="verifyAdmin()">Authenticate Terminal</button>
+  <!-- Admin Authentication Modal -->
+  <div id="admin-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title" hidden>
+    <div class="modal-content glass-card">
+      <div class="modal-header">
+        <h2 id="modal-title"><i class="fas fa-shield-halved"></i> Gatekeeper Security</h2>
+        <button class="close-btn" onclick="closeAdminModal()" aria-label="Close Authentication Gate">&times;</button>
+      </div>
+      <p class="modal-desc">Elevate your access token to mutate grade sheets, override attendance logs, append calendar matrices, and broadcast emergency notifications.</p>
+      <div class="form-group">
+        <label for="admin-pass" class="hidden">Administrative Passcode</label>
+        <input type="password" id="admin-pass" placeholder="Enter Security Code (1234)" onkeypress="if(event.key==='Enter') verifyAdmin()" />
+      </div>
+      <button class="btn btn-primary btn-full" onclick="verifyAdmin()">Authenticate Terminal</button>
+    </div>
+  </div>
+
+  <div class="app-layout">
+    <!-- Sidebar -->
+    <aside class="sidebar" id="sidebar" aria-label="LMS Navigation Deck">
+      <div class="sidebar-header">
+        <div class="brand">
+          <div class="logo-box"><i class="fas fa-graduation-cap"></i></div>
+          <span>Nexus<strong class="brand-sub">UNIVERSITY</strong></span>
         </div>
-    </div>
+        <button class="mobile-only close-sidebar burger" onclick="toggleSidebar()" aria-label="Collapse Navigation Deck"><i class="fas fa-times"></i></button>
+      </div>
 
-    <div class="app-layout">
-        <!-- Persistent Left Deck Layout -->
-        <aside class="sidebar" id="sidebar" aria-label="LMS Navigation Deck">
-            <div class="sidebar-header">
-                <div class="brand">
-                    <div class="logo-box"><i class="fas fa-graduation-cap"></i></div>
-                    <span>Nexus<strong class="brand-sub">UNIVERSITY</strong></span>
-                </div>
-                <button class="mobile-only close-sidebar burger" onclick="toggleSidebar()" aria-label="Collapse Navigation Deck"><i class="fas fa-times"></i></button>
+      <nav class="nav-links" aria-label="Academic Hub Navigation">
+        <button class="nav-item active" data-view="dashboard" onclick="navigate('dashboard')">
+          <i class="fas fa-layer-group"></i> <span>Console Node</span>
+        </button>
+        <button class="nav-item" data-view="courses" onclick="navigate('courses')">
+          <i class="fas fa-columns"></i> <span>Course Registries</span>
+        </button>
+        <button class="nav-item" data-view="assignments" onclick="navigate('assignments')">
+          <i class="fas fa-folder-open"></i> <span>Task Master</span>
+        </button>
+        <button class="nav-item" data-view="grades" onclick="navigate('grades')">
+          <i class="fas fa-chart-pie"></i> <span>Gradebook Matrix</span>
+        </button>
+        <button class="nav-item" data-view="schedule" onclick="navigate('schedule')">
+          <i class="fas fa-clock-seven"></i> <span>Schedules & Timetable</span>
+        </button>
+
+        <div class="nav-divider"></div>
+
+        <!-- Admin nav is hidden for non-admins; updateAdminUI toggles .hidden and body.admin-mode reveals .admin-only -->
+        <button class="nav-item admin-link hidden admin-only" id="admin-nav" data-view="admin" onclick="navigate('admin')">
+          <i class="fas fa-sliders-h"></i> <span>Admin Command Control</span>
+        </button>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div style="display:flex; gap:8px; align-items:center;">
+          <button class="admin-unlock" id="admin-trigger" onclick="openAdminModal()">
+            <i class="fas fa-lock-keyhole"></i> <span>Elevate Token</span>
+          </button>
+          <!-- Compact logout visible only in admin-mode -->
+          <button id="admin-logout-compact" class="btn admin-only" onclick="adminLogout()" title="Sign out of admin mode" style="display:none;">
+            <i class="fas fa-sign-out-alt"></i>
+          </button>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Stage -->
+    <main class="main-stage">
+      <header class="top-nav">
+        <div class="nav-left">
+          <button class="burger" onclick="toggleSidebar()" aria-label="Expand Control Deck"><i class="fas fa-bars"></i></button>
+          <h1 class="breadcrumb" id="view-indicator">Console Node</h1>
+        </div>
+        <div class="nav-right">
+          <label for="semester-selector" class="hidden">Switch Academic Term</label>
+          <select id="semester-selector" class="glass-select" onchange="switchSemester(this.value)" aria-label="Switch Academic Matrix Term"></select>
+
+          <div class="user-pill">
+            <span id="time-display" aria-live="polite">00:00:00</span>
+
+            <div class="avatar-wrapper">
+              <button class="avatar-circle-btn" onclick="document.getElementById('profile-upload').click()" aria-label="Modify Student Avatar Blob" title="Upload Custom Profile Avatar">
+                <img id="user-avatar-img" src="https://ui-avatars.com/api/?name=Student&background=6366f1&color=fff" alt="User Security Identity Avatar" />
+                <div class="avatar-circle-overlay"><i class="fas fa-camera"></i></div>
+              </button>
+              <span class="status-indicator-dot" title="User Session Active Token Verified"></span>
             </div>
+          </div>
+        </div>
+      </header>
 
-            <nav class="nav-links" aria-label="Academic Hub Navigation">
-                <button class="nav-item active" data-view="dashboard" onclick="navigate('dashboard')">
-                    <i class="fas fa-layer-group"></i> <span>Console Node</span>
-                </button>
-                <button class="nav-item" data-view="courses" onclick="navigate('courses')">
-                    <i class="fas fa-columns"></i> <span>Course Registries</span>
-                </button>
-                <button class="nav-item" data-view="assignments" onclick="navigate('assignments')">
-                    <i class="fas fa-folder-open"></i> <span>Task Master</span>
-                </button>
-                <button class="nav-item" data-view="grades" onclick="navigate('grades')">
-                    <i class="fas fa-chart-pie"></i> <span>Gradebook Matrix</span>
-                </button>
-                <button class="nav-item" data-view="schedule" onclick="navigate('schedule')">
-                    <i class="fas fa-clock-seven"></i> <span>Schedules & Timetable</span>
-                </button>
+      <!-- Mount point -->
+      <div id="mount" class="view-mount" role="region" aria-live="polite"></div>
 
-                <div class="nav-divider"></div>
+      <!-- Gradebook HTML (Settings modal, template, assignment modal) -->
+      <!-- These are also inserted by JS if missing; included here for clarity -->
+      <div id="gradebook-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="gradebook-title" hidden>
+        <div class="modal-content glass-card">
+          <div class="modal-header">
+            <h2 id="gradebook-title"><i class="fas fa-book-open"></i> Gradebook Settings</h2>
+            <button class="close-btn" onclick="toggleGradebookModal()" aria-label="Close Gradebook Settings">&times;</button>
+          </div>
+          <div class="modal-body">
+            <section class="settings-section">
+              <h3>Draft Grade for Missing Assignments</h3>
+              <label class="row"><span>Apply draft grade to missing assignments</span><input id="gb-draft-enabled" type="checkbox" /></label>
+              <label class="row"><span>Draft grade percentage</span><input id="gb-draft-percent" type="number" min="0" max="100" value="0" /> %</label>
+              <p class="muted">Draft grades are hidden from students until returned.</p>
+            </section>
 
-                <button class="nav-item admin-link hidden" id="admin-nav" data-view="admin" onclick="navigate('admin')">
-                    <i class="fas fa-sliders-h"></i> <span>Admin Command Control</span>
-                </button>
-            </nav>
+            <section class="settings-section">
+              <h3>Overall Grade Calculation</h3>
+              <label class="row"><input name="gb-calc-mode" type="radio" value="none" /> <span>No overall grade</span></label>
+              <label class="row"><input name="gb-calc-mode" type="radio" value="weighted" /> <span>Weighted by category</span></label>
+              <label class="row"><input name="gb-calc-mode" type="radio" value="total" /> <span>Total points</span></label>
+              <label class="row"><span>Show overall grade to students</span><input id="gb-show-overall" type="checkbox" /></label>
+            </section>
 
-            <div class="sidebar-footer">
-                <button class="admin-unlock" id="admin-trigger" onclick="openAdminModal()">
-                    <i class="fas fa-lock-keyhole"></i> <span>Elevate Token</span>
-                </button>
+            <section class="settings-section">
+              <h3>Grading Periods</h3>
+              <div id="gb-period-warning" class="warning" hidden></div>
+              <p class="small-muted">Grading periods are your existing semesters; you can create up to 12 terms in Admin.</p>
+            </section>
+
+            <section class="settings-actions">
+              <button class="btn btn-primary admin-only" onclick="saveGradebookSettings_guarded()">Save Settings</button>
+              <button class="btn" onclick="closeGradebookModal()">Cancel</button>
+            </section>
+          </div>
+        </div>
+      </div>
+
+      <template id="gradebook-template">
+        <div class="gradebook-root">
+          <div class="gradebook-header">
+            <h2>Gradebook Matrix</h2>
+            <div class="actions">
+              <!-- Settings visible only to admin -->
+              <button class="btn admin-only" onclick="toggleGradebookModal()" title="Admin only">Settings</button>
+              <button class="btn" onclick="exportGradebook()">Export (JSON)</button>
             </div>
-        </aside>
+          </div>
 
-        <!-- Dynamic Main Stage Workspace Layout -->
-        <main class="main-stage">
-            <header class="top-nav">
-                <div class="nav-left">
-                    <button class="burger" onclick="toggleSidebar()" aria-label="Expand Control Deck"><i class="fas fa-bars"></i></button>
-                    <h1 class="breadcrumb" id="view-indicator">Console Node</h1>
-                </div>
-                <div class="nav-right">
-                    <label for="semester-selector" class="hidden">Switch Academic Term</label>
-                    <select id="semester-selector" class="glass-select" onchange="switchSemester(this.value)" aria-label="Switch Academic Matrix Term"></select>
-
-                    <div class="user-pill">
-                        <span id="time-display" aria-live="polite">00:00:00</span>
-
-                        <!-- Circular Avatar Module Container with Status Ring and Badge Overlay -->
-                        <div class="avatar-wrapper">
-                            <button class="avatar-circle-btn" onclick="document.getElementById('profile-upload').click()" aria-label="Modify Student Avatar Blob" title="Upload Custom Profile Avatar">
-                                <img id="user-avatar-img" src="https://ui-avatars.com/api/?name=Student&background=6366f1&color=fff" alt="User Security Identity Avatar" />
-                                <div class="avatar-circle-overlay"><i class="fas fa-camera"></i></div>
-                            </button>
-                            <span class="status-indicator-dot" title="User Session Active Token Verified"></span>
-                        </div>
-                    </div>
-                </div>
-            </header>
-
-            <!-- Reactive Dynamic Mounting Target Layout Node -->
-            <div id="mount" class="view-mount" role="region" aria-live="polite"></div>
-
-            <!-- Gradebook Settings Modal and Templates (inserted into the page so the gradebook UI can mount into #mount) -->
-            <!-- Gradebook Settings Modal -->
-            <div id="gradebook-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="gradebook-title" hidden>
-                <div class="modal-content glass-card">
-                    <div class="modal-header">
-                        <h2 id="gradebook-title"><i class="fas fa-book-open"></i> Gradebook Settings</h2>
-                        <button class="close-btn" onclick="toggleGradebookModal()" aria-label="Close Gradebook Settings">&times;</button>
-                    </div>
-                    <div class="modal-body">
-                        <section class="settings-section">
-                            <h3>Draft Grade for Missing Assignments</h3>
-                            <label class="row"><span>Apply draft grade to missing assignments</span><input id="gb-draft-enabled" type="checkbox" /></label>
-                            <label class="row"><span>Draft grade percentage</span><input id="gb-draft-percent" type="number" min="0" max="100" value="0" /> %</label>
-                            <p class="muted">Draft grades are hidden from students until returned.</p>
-                        </section>
-
-                        <section class="settings-section">
-                            <h3>Overall Grade Calculation</h3>
-                            <label class="row"><input name="gb-calc-mode" type="radio" value="none" /> <span>No overall grade</span></label>
-                            <label class="row"><input name="gb-calc-mode" type="radio" value="weighted" /> <span>Weighted by category</span></label>
-                            <label class="row"><input name="gb-calc-mode" type="radio" value="total" /> <span>Total points</span></label>
-                            <label class="row"><span>Show overall grade to students</span><input id="gb-show-overall" type="checkbox" /></label>
-                        </section>
-
-                        <section class="settings-section">
-                            <h3>Grading Periods</h3>
-                            <div id="gb-period-warning" class="warning" hidden></div>
-                            <p class="small-muted">Grading periods are your existing semesters; you can create up to 12 terms in Admin.</p>
-                        </section>
-
-                        <section class="settings-actions">
-                            <button class="btn btn-primary" onclick="saveGradebookSettings()">Save Settings</button>
-                            <button class="btn" onclick="closeGradebookModal()">Cancel</button>
-                        </section>
-                    </div>
-                </div>
+          <div class="gradebook-controls">
+            <label>Term
+              <select id="gb-term-select"></select>
+            </label>
+            <label>Course
+              <select id="gb-course-select"></select>
+            </label>
+            <!-- Add assignment button shown to admin only; non-admins see a hint -->
+            <div id="gb-add-area">
+              <button class="btn admin-only" onclick="openAddAssignment()">Add Assignment</button>
+              <span class="small-muted" id="gb-add-hint">Admin only</span>
             </div>
+          </div>
 
-            <!-- Gradebook Template -->
-            <template id="gradebook-template">
-                <div class="gradebook-root">
-                    <div class="gradebook-header">
-                        <h2>Gradebook Matrix</h2>
-                        <div class="actions">
-                            <button class="btn" onclick="toggleGradebookModal()">Settings</button>
-                            <button class="btn" onclick="exportGradebook()">Export (JSON)</button>
-                        </div>
-                    </div>
+          <div id="assignments-table-wrap"></div>
+        </div>
+      </template>
 
-                    <div class="gradebook-controls">
-                        <label>Term
-                            <select id="gb-term-select"></select>
-                        </label>
-                        <label>Course
-                            <select id="gb-course-select"></select>
-                        </label>
-                        <button class="btn" onclick="openAddAssignment()">Add Assignment</button>
-                    </div>
-
-                    <div id="assignments-table-wrap"></div>
-                </div>
-            </template>
-
-            <!-- Add Assignment Modal -->
-            <div id="assignment-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="assignment-title" hidden>
-                <div class="modal-content glass-card">
-                    <div class="modal-header">
-                        <h2 id="assignment-title">Add Assignment</h2>
-                        <button class="close-btn" onclick="closeAssignmentModal()" aria-label="Close">&times;</button>
-                    </div>
-                    <div class="modal-body">
-                        <label>Title <input id="gb-assign-title" /></label>
-                        <label>Category
-                            <select id="gb-assign-category"></select>
-                        </label>
-                        <label>Due date <input id="gb-assign-due" type="date" /></label>
-                        <label>Points possible <input id="gb-assign-points" type="number" min="0" value="100" /></label>
-                        <label>Status
-                            <select id="gb-assign-status">
-                                <option value="normal">Normal (counts)</option>
-                                <option value="missing">Missing</option>
-                                <option value="excused">Excused</option>
-                                <option value="late">Late</option>
-                            </select>
-                        </label>
-                        <div class="modal-actions">
-                            <button class="btn btn-primary" onclick="saveAssignment()">Save</button>
-                            <button class="btn" onclick="closeAssignmentModal()">Cancel</button>
-                        </div>
-                    </div>
-                </div>
+      <div id="assignment-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="assignment-title" hidden>
+        <div class="modal-content glass-card">
+          <div class="modal-header">
+            <h2 id="assignment-title">Add Assignment</h2>
+            <button class="close-btn" onclick="closeAssignmentModal()" aria-label="Close">&times;</button>
+          </div>
+          <div class="modal-body">
+            <label>Title <input id="gb-assign-title" /></label>
+            <label>Category
+              <select id="gb-assign-category"></select>
+            </label>
+            <label>Due date <input id="gb-assign-due" type="date" /></label>
+            <label>Points possible <input id="gb-assign-points" type="number" min="0" value="100" /></label>
+            <label>Status
+              <select id="gb-assign-status">
+                <option value="normal">Normal (counts)</option>
+                <option value="missing">Missing</option>
+                <option value="excused">Excused</option>
+                <option value="late">Late</option>
+              </select>
+            </label>
+            <div class="modal-actions">
+              <button class="btn btn-primary admin-only" onclick="saveAssignment_guarded()">Save</button>
+              <button class="btn" onclick="closeAssignmentModal()">Cancel</button>
             </div>
-            <!-- End Gradebook HTML -->
-        </main>
+          </div>
+        </div>
+      </div>
+      <!-- End Gradebook HTML -->
+    </main>
 
-        <!-- Intelligent Gemini-Mock Assistant Overlay Node -->
-        <aside class="ai-widget" id="ai-hub" aria-label="Gemini Cognitive Computational Layer">
-            <button class="ai-header" onclick="toggleAI()" aria-expanded="false" aria-controls="ai-content">
-                <div class="ai-status">
-                    <span class="pulse-beacon"></span>
-                    <i class="fas fa-sparkles"></i> <span class="ai-status-text">Gemini Analysis Engine</span>
-                </div>
-                <i class="fas fa-chevron-up" id="ai-icon"></i>
-            </button>
-            <div class="ai-content" id="ai-content">
-                <div class="chat-area" id="chat-area" role="log" aria-live="polite">
-                    <div class="ai-msg">Matrix initialized. I have indexed your transcript history, class vectors, category distributions, and schedule parameters. Submit an execution query for grade tracking optimization.</div>
-                </div>
-                <div class="chat-input">
-                    <label for="ai-query" class="hidden">Query Analysis Parameter</label>
-                    <input type="text" id="ai-query" placeholder="Ask about GPA trajectory or weights..." onkeypress="if(event.key === 'Enter') askAI()" />
-                    <button onclick="askAI()" aria-label="Execute Analytical Model Command"><i class="fas fa-paper-plane"></i></button>
-                </div>
-            </div>
-        </aside>
-    </div>
+    <!-- AI Widget -->
+    <aside class="ai-widget" id="ai-hub" aria-label="Gemini Cognitive Computational Layer">
+      <button class="ai-header" onclick="toggleAI()" aria-expanded="false" aria-controls="ai-content">
+        <div class="ai-status">
+          <span class="pulse-beacon"></span>
+          <i class="fas fa-sparkles"></i> <span class="ai-status-text">Gemini Analysis Engine</span>
+        </div>
+        <i class="fas fa-chevron-up" id="ai-icon"></i>
+      </button>
+      <div class="ai-content" id="ai-content">
+        <div class="chat-area" id="chat-area" role="log" aria-live="polite">
+          <div class="ai-msg">Matrix initialized. I have indexed your transcript history, class vectors, category distributions, and schedule parameters. Submit an execution query for grade tracking optimization.</div>
+        </div>
+        <div class="chat-input">
+          <label for="ai-query" class="hidden">Query Analysis Parameter</label>
+          <input type="text" id="ai-query" placeholder="Ask about GPA trajectory or weights..." onkeypress="if(event.key === 'Enter') askAI()" />
+          <button onclick="askAI()" aria-label="Execute Analytical Model Command"><i class="fas fa-paper-plane"></i></button>
+        </div>
+      </div>
+    </aside>
+  </div>
 
-    <script src="script.js"></script>
+  <script src="script.js"></script>
 </body>
 </html>
