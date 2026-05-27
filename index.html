@@ -2,68 +2,66 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>College Progress Portal</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Academic Portal Pro</title>
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body class="dark-theme">
     
-    <div class="mobile-toggle" id="mobile-toggle">
-        <i class="fas fa-bars"></i>
+    <!-- Admin Login Modal -->
+    <div id="admin-modal" class="modal">
+        <div class="modal-content card">
+            <h2>Admin Authentication</h2>
+            <p>Enter your secret access key</p>
+            <input type="password" id="admin-pass-input" placeholder="Passcode (Default: 1234)">
+            <div class="modal-actions">
+                <button class="btn btn-secondary" onclick="closeAdminModal()">Cancel</button>
+                <button class="btn btn-primary" onclick="attemptAdminLogin()">Login</button>
+            </div>
+        </div>
     </div>
 
-    <div class="container">
-        <!-- Sidebar Navigation -->
-        <nav class="sidebar" id="sidebar">
+    <div class="app-wrapper">
+        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar">
             <div class="sidebar-header">
-                <div class="logo">
-                    <i class="fas fa-graduation-cap"></i>
-                    <span>UniPortal</span>
-                </div>
+                <div class="logo"><i class="fas fa-university"></i> <span>UniPortal</span></div>
+                <button class="mobile-close" onclick="toggleSidebar()"><i class="fas fa-times"></i></button>
             </div>
-            <ul class="nav-links">
-                <li class="active" data-section="dashboard"><i class="fas fa-th-large"></i> <span>Dashboard</span></li>
-                <li data-section="courses"><i class="fas fa-book"></i> <span>Courses</span></li>
-                <li data-section="assignments"><i class="fas fa-tasks"></i> <span>Assignments</span></li>
-                <li data-section="grades"><i class="fas fa-chart-line"></i> <span>Grades</span></li>
-                <li data-section="ai-assistant"><i class="fas fa-robot"></i> <span>AI Assistant</span></li>
-                
-                <!-- Admin link is hidden by default -->
-                <li id="admin-nav-item" style="display: none;" data-section="admin"><i class="fas fa-user-shield"></i> <span>Admin Panel</span></li>
-            </ul>
             
-            <div class="sidebar-footer">
-                <button id="unlock-admin-btn" title="Admin Login"><i class="fas fa-lock"></i></button>
-                <div class="theme-switch-wrapper">
-                    <i class="fas fa-moon"></i>
-                    <label class="theme-switch">
-                        <input type="checkbox" id="dark-mode-toggle" checked>
-                        <span class="slider round"></span>
-                    </label>
-                </div>
-            </div>
-        </nav>
+            <nav class="nav-menu">
+                <div class="nav-item active" onclick="navigate('dashboard')"><i class="fas fa-home"></i> <span>Dashboard</span></div>
+                <div class="nav-item" onclick="navigate('courses')"><i class="fas fa-book-open"></i> <span>My Courses</span></div>
+                <div class="nav-item" onclick="navigate('assignments')"><i class="fas fa-tasks"></i> <span>Assignments</span></div>
+                <div class="nav-item" onclick="navigate('grades')"><i class="fas fa-graduation-cap"></i> <span>Final Grades</span></div>
+                <div class="nav-item" onclick="navigate('calendar')"><i class="fas fa-calendar"></i> <span>Calendar</span></div>
+                <div class="nav-separator"></div>
+                <div class="nav-item admin-only-btn" id="admin-nav" onclick="navigate('admin')" style="display:none;"><i class="fas fa-user-shield"></i> <span>Admin Console</span></div>
+            </nav>
 
+            <div class="sidebar-footer">
+                <button class="admin-lock-btn" onclick="openAdminModal()" id="lock-icon">
+                    <i class="fas fa-lock"></i> Admin Login
+                </button>
+            </div>
+        </aside>
+
+        <!-- Main Area -->
         <main class="main-content">
-            <header class="top-header">
-                <div class="header-search">
-                    <i class="fas fa-search"></i>
-                    <input type="text" placeholder="Search portal...">
-                </div>
-                <div class="header-user">
-                    <div class="clock" id="real-time-clock">00:00:00</div>
-                    <div class="notifications">
-                        <i class="fas fa-bell"></i>
-                        <span class="badge" id="notif-badge">0</span>
-                    </div>
-                    <div class="profile-preview" id="student-profile-header"></div>
+            <header class="top-bar">
+                <button class="menu-trigger" onclick="toggleSidebar()"><i class="fas fa-bars"></i></button>
+                <div class="page-title" id="current-page-title">Dashboard</div>
+                <div class="user-tools">
+                    <div class="real-time-clock" id="clock">00:00:00</div>
+                    <div class="notifications"><i class="fas fa-bell"></i><span class="badge" id="notif-count">0</span></div>
+                    <div class="profile-pill" id="user-profile"></div>
                 </div>
             </header>
 
-            <div id="content-render-area">
-                <!-- Content Injected by JS -->
-            </div>
+            <section id="view-container" class="view-container">
+                <!-- Dynamic Content Here -->
+            </section>
         </main>
     </div>
 
