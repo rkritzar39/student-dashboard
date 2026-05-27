@@ -4,7 +4,7 @@
  * Full script.js combining core app state, view renderers, admin mutation APIs,
  * and the Gradebook integration module (draft grades, weighted/total/none modes).
  *
- * Paste this file as your script.js. It expects the HTML and CSS you provided.
+ * This version enforces admin-only mutations and improves UI affordances.
  */
 
 /* =========================
@@ -76,6 +76,98 @@ function commitSystemState() {
   } catch (e) {
     console.warn('Failed to persist appState', e);
   }
+}
+
+/* =========================
+   2.5 ADMIN HELPERS & UI UPDATES
+   ========================= */
+
+/**
+ * requireAdmin - returns true if current user is admin, otherwise shows alert and returns false.
+ * Use at the top of any mutation that must be admin-only.
+ */
+function requireAdmin(actionLabel = 'perform this action') {
+  if (appState.role !== 'admin') {
+    alert(`Permission denied — only administrators can ${actionLabel}.`);
+    return false;
+  }
+  return true;
+}
+
+/**
+ * updateAdminUI - toggles admin-only UI affordances across the app.
+ * - Shows/hides admin nav
+ * - Adds disabled visuals to admin-only controls
+ * - Updates admin trigger visual
+ */
+function updateAdminUI() {
+  // Admin nav visibility
+  const adminNav = document.getElementById('admin-nav');
+  if (adminNav) {
+    if (appState.role === 'admin') adminNav.classList.remove('hidden');
+    else adminNav.classList.add('hidden');
+  }
+
+  // Admin trigger visual
+  const adminTrigger = document.getElementById('admin-trigger');
+  if (adminTrigger) {
+    if (appState.role === 'admin') adminTrigger.classList.add('admin-unlocked');
+    else adminTrigger.classList.remove('admin-unlocked');
+  }
+
+  // Disable gradebook settings button for non-admins
+  const gbSettingsBtn = document.querySelector('button[onclick="toggleGradebookModal()"]');
+  if (gbSettingsBtn) {
+    if (appState.role !== 'admin') {
+      gbSettingsBtn.setAttribute('aria-disabled', 'true');
+      gbSettingsBtn.classList.add('disabled-control');
+      gbSettingsBtn.title = 'Only administrators can change gradebook settings';
+      gbSettingsBtn.disabled = true;
+    } else {
+      gbSettingsBtn.removeAttribute('aria-disabled');
+      gbSettingsBtn.classList.remove('disabled-control');
+      gbSettingsBtn.title = '';
+      gbSettingsBtn.disabled = false;
+    }
+  }
+
+  // Disable mutation buttons inside #mount (if present)
+  document.querySelectorAll('#mount .btn').forEach(btn => {
+    const onclick = btn.getAttribute('onclick') || '';
+    const adminOnlyActions = [
+      'openAddAssignment', 'saveAssignment', 'adminAddCourse', 'adminAddAssignment', 'adminAddSemester',
+      'adminPostAnnouncement', 'adminAddSchedule', 'adminUpdateAttendance', 'markAssignmentMissing',
+      'returnDraftForAssignment', 'deleteAssignmentFromCourse'
+    ];
+    const isAdminAction = adminOnlyActions.some(a => onclick.includes(a));
+    if (isAdminAction) {
+      if (appState.role !== 'admin') {
+        btn.classList.add('disabled-control');
+        btn.setAttribute('aria-disabled', 'true');
+        btn.disabled = true;
+      } else {
+        btn.classList.remove('disabled-control');
+        btn.removeAttribute('aria-disabled');
+        btn.disabled = false;
+      }
+    }
+  });
+}
+
+/**
+ * Elevate or revoke admin role with UI update and persistence.
+ */
+function onRoleElevatedToAdmin() {
+  appState.role = 'admin';
+  commitSystemState();
+  updateAdminUI();
+  alert('Admin privileges granted.');
+}
+function onRoleRevoked() {
+  appState.role = 'student';
+  commitSystemState();
+  updateAdminUI();
+  alert('Admin privileges revoked.');
 }
 
 /* =========================
@@ -157,6 +249,9 @@ function navigate(viewTarget) {
     case 'admin': renderAdmin(mount); break;
     default: renderDashboard(mount);
   }
+
+  // Update admin UI affordances after navigation
+  updateAdminUI();
 }
 
 function openCourse(courseId) {
@@ -305,36 +400,8 @@ function renderCourseDetail(mount) {
 }
 
 function renderGrades(mount) {
-  const currentTerm = appState.semesters.find(s => s.id === appState.currentSemesterId);
-  if (!mount) return;
-  if (!currentTerm || !currentTerm.courses.length) {
-    mount.innerHTML = `<div class="glass-card"><h3 style="color:var(--text-secondary)">No transcript points available for evaluation processing.</h3></div>`;
-    return;
-  }
-
-  mount.innerHTML = currentTerm.courses.map(course => `
-    <div class="glass-card" style="margin-bottom:2rem">
-      <div style="display:flex; justify-content:between; align-items:center; margin-bottom:1.5rem; flex-wrap:wrap; gap:15px;">
-        <h2 style="font-size: 1.3rem; font-weight:800; flex:1;" class="course-link" onclick="openCourse('${course.id}')">${course.title}</h2>
-        <span class="btn btn-secondary" style="border-color:var(--primary); font-weight:800; color:white;">Running Total: ${calculateCourseGrade(course)}%</span>
-      </div>
-      <div class="table-container">
-        <table>
-          <thead><tr><th>Task Item</th><th>Evaluation Tier</th><th>Raw Metric Performance</th><th>Weight Proportion Impact</th></tr></thead>
-          <tbody>
-            ${course.assignments.length ? course.assignments.map(a => `
-              <tr>
-                <td>${a.title}</td>
-                <td><span style="background: rgba(99,102,241,0.08); padding: 4px 8px; border-radius: 6px; font-size: 0.75rem; font-weight:700; color:var(--primary); text-transform:uppercase;">${a.category}</span></td>
-                <td><strong>${a.score}</strong> / ${a.total}</td>
-                <td style="color:var(--text-secondary); font-weight:600;">${course.weights[a.category]}% total group weight</td>
-              </tr>
-            `).join('') : `<tr><td colspan="4" style="color:var(--text-secondary)">No elements evaluated.</td></tr>`}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  `).join('');
+  // Render the gradebook UI instead of the simple grades list
+  renderGradebookView();
 }
 
 function renderSchedule(mount) {
@@ -402,7 +469,7 @@ function renderAdmin(mount) {
           <div style="display:flex; flex-direction:column; gap:12px;">
             <input id="new-term-id" placeholder="Unique Index ID Code (e.g., sp27, q127)">
             <input id="new-term-name" placeholder="Official Term Title (e.g., Spring Semester 2027)">
-            <button class="btn btn-secondary btn-full" onclick="adminAddSemester()">Inject Term Into LMS Cluster</button>
+            <button class="btn btn-secondary btn-full" onclick="adminAddSemester_guarded()">Inject Term Into LMS Cluster</button>
           </div>
         </div>
 
@@ -422,7 +489,7 @@ function renderAdmin(mount) {
               <div><label style="font-size:0.75rem; color:var(--text-secondary)">Project %</label><input type="number" id="w-pj" value="25"></div>
               <div><label style="font-size:0.75rem; color:var(--text-secondary)">Participation %</label><input type="number" id="w-pt" value="0"></div>
             </div>
-            <button class="btn btn-primary btn-full" onclick="adminAddCourse()">Instantiate Core Course Module</button>
+            <button class="btn btn-primary btn-full" onclick="adminAddCourse_guarded()">Instantiate Core Course Module</button>
           </div>
         </div>
 
@@ -442,7 +509,7 @@ function renderAdmin(mount) {
               <input type="number" id="asgn-score" placeholder="Acquired Points" style="width: 50%;">
               <input type="number" id="asgn-total" placeholder="Max Threshold Potential" style="width: 50%;">
             </div>
-            <button class="btn btn-primary btn-full" onclick="adminAddAssignment()">Commit Entry Array</button>
+            <button class="btn btn-primary btn-full" onclick="adminAddAssignment_guarded()">Commit Entry Array</button>
           </div>
         </div>
       </div>
@@ -453,7 +520,7 @@ function renderAdmin(mount) {
           <div style="display:flex; flex-direction:column; gap:12px;">
             <input id="ann-title" placeholder="Broadcast Header Descriptor">
             <textarea id="ann-content" placeholder="Compile programmatic transmission block parameters..."></textarea>
-            <button class="btn btn-secondary btn-full" onclick="adminPostAnnouncement()">Broadcast Stream Data Packet</button>
+            <button class="btn btn-secondary btn-full" onclick="adminPostAnnouncement_guarded()">Broadcast Stream Data Packet</button>
           </div>
         </div>
 
@@ -466,7 +533,7 @@ function renderAdmin(mount) {
             </select>
             <input type="time" id="sch-time">
             <input id="sch-course-name" placeholder="Class Descriptive Module Code & Location String">
-            <button class="btn btn-secondary btn-full" onclick="adminAddSchedule()">Append Calendar Matrix</button>
+            <button class="btn btn-secondary btn-full" onclick="adminAddSchedule_guarded()">Append Calendar Matrix</button>
           </div>
         </div>
 
@@ -478,18 +545,23 @@ function renderAdmin(mount) {
               <input type="number" id="att-present" placeholder="Attended Vector Units" style="width: 50%;">
               <input type="number" id="att-total" placeholder="Global Evaluation Held" style="width: 50%;">
             </div>
-            <button class="btn btn-secondary btn-full" onclick="adminUpdateAttendance()">Synchronize Attendance Array Logs</button>
+            <button class="btn btn-secondary btn-full" onclick="adminUpdateAttendance_guarded()">Synchronize Attendance Array Logs</button>
           </div>
         </div>
       </div>
     </div>
   `;
+
+  // After rendering admin view, ensure admin UI is updated
+  updateAdminUI();
 }
 
 /* =========================
-   8. ADMIN MUTATION OPERATIONS
+   8. ADMIN MUTATION OPERATIONS (GUARDED)
    ========================= */
-function adminAddSemester() {
+
+function adminAddSemester_guarded() {
+  if (!requireAdmin('create a grading period')) return;
   const rawCodeID = (document.getElementById('new-term-id')?.value || '').trim().toLowerCase().replace(/\s+/g, '');
   const clearNameString = (document.getElementById('new-term-name')?.value || '').trim();
 
@@ -502,7 +574,8 @@ function adminAddSemester() {
   renderAdmin(document.getElementById('mount'));
 }
 
-function adminAddCourse() {
+function adminAddCourse_guarded() {
+  if (!requireAdmin('create a course')) return;
   const title = (document.getElementById('new-c-title')?.value || '').trim();
   const instructor = (document.getElementById('new-c-instr')?.value || '').trim();
 
@@ -534,7 +607,8 @@ function adminAddCourse() {
   renderAdmin(document.getElementById('mount'));
 }
 
-function adminAddAssignment() {
+function adminAddAssignment_guarded() {
+  if (!requireAdmin('append an assignment')) return;
   const courseId = document.getElementById('asgn-course-sel')?.value;
   const name = (document.getElementById('asgn-name')?.value || '').trim();
   const cat = document.getElementById('asgn-cat')?.value;
@@ -547,13 +621,14 @@ function adminAddAssignment() {
   if (!course) return alert("Course not found.");
 
   const id = Date.now();
-  course.assignments.push({ id, title: name, category: cat, score, total });
+  course.assignments.push({ id, title: name, category: cat, score, total, draftApplied: false, draftScore: null, draftReturned: false });
   commitSystemState();
   alert("Assignment appended to course.");
   renderAdmin(document.getElementById('mount'));
 }
 
-function adminPostAnnouncement() {
+function adminPostAnnouncement_guarded() {
+  if (!requireAdmin('post an announcement')) return;
   const title = (document.getElementById('ann-title')?.value || '').trim();
   const content = (document.getElementById('ann-content')?.value || '').trim();
   if (!title || !content) return alert("Title and content required.");
@@ -565,7 +640,8 @@ function adminPostAnnouncement() {
   renderAdmin(document.getElementById('mount'));
 }
 
-function adminAddSchedule() {
+function adminAddSchedule_guarded() {
+  if (!requireAdmin('append a schedule entry')) return;
   const day = document.getElementById('sch-day')?.value;
   const time = document.getElementById('sch-time')?.value;
   const courseName = (document.getElementById('sch-course-name')?.value || '').trim();
@@ -579,7 +655,8 @@ function adminAddSchedule() {
   renderAdmin(document.getElementById('mount'));
 }
 
-function adminUpdateAttendance() {
+function adminUpdateAttendance_guarded() {
+  if (!requireAdmin('update attendance')) return;
   const courseId = document.getElementById('att-course-sel')?.value;
   const present = Number(document.getElementById('att-present')?.value || 0);
   const total = Number(document.getElementById('att-total')?.value || 0);
@@ -594,9 +671,7 @@ function adminUpdateAttendance() {
 }
 
 /* =========================
-   9. GRADEBOOK INTEGRATION MODULE
-   - Uses appState and commitSystemState
-   - Adds UI templates into DOM if missing and mounts into #mount
+   9. GRADEBOOK INTEGRATION MODULE (GUARDED)
    ========================= */
 (function () {
   // Ensure mount exists
@@ -652,7 +727,7 @@ function adminUpdateAttendance() {
             </section>
 
             <section class="settings-actions">
-              <button class="btn btn-primary" onclick="saveGradebookSettings()">Save Settings</button>
+              <button class="btn btn-primary" onclick="saveGradebookSettings_guarded()">Save Settings</button>
               <button class="btn" onclick="closeGradebookModal()">Cancel</button>
             </section>
           </div>
@@ -707,7 +782,7 @@ function adminUpdateAttendance() {
               </select>
             </label>
             <div class="modal-actions">
-              <button class="btn btn-primary" onclick="saveAssignment()">Save</button>
+              <button class="btn btn-primary" onclick="saveAssignment_guarded()">Save</button>
               <button class="btn" onclick="closeAssignmentModal()">Cancel</button>
             </div>
           </div>
@@ -744,6 +819,7 @@ function adminUpdateAttendance() {
     populateTermSelect();
     populateCourseSelect();
     renderAssignmentsTable();
+    updateAdminUI();
   }
 
   // Populate term select (uses appState.semesters)
@@ -822,19 +898,22 @@ function adminUpdateAttendance() {
     wrap.innerHTML = '';
     wrap.appendChild(table);
 
-    // wire action buttons
+    // wire action buttons to guarded handlers
     wrap.querySelectorAll('button[data-action="mark-missing"]').forEach(b => {
-      b.addEventListener('click', e => markAssignmentMissing(course.id, Number(e.currentTarget.dataset.id)));
+      b.addEventListener('click', e => markAssignmentMissing_guarded(course.id, Number(e.currentTarget.dataset.id)));
     });
     wrap.querySelectorAll('button[data-action="return-draft"]').forEach(b => {
-      b.addEventListener('click', e => returnDraftForAssignment(course.id, Number(e.currentTarget.dataset.id)));
+      b.addEventListener('click', e => returnDraftForAssignment_guarded(course.id, Number(e.currentTarget.dataset.id)));
     });
     wrap.querySelectorAll('button[data-action="delete-assignment"]').forEach(b => {
-      b.addEventListener('click', e => deleteAssignmentFromCourse(course.id, Number(e.currentTarget.dataset.id)));
+      b.addEventListener('click', e => deleteAssignmentFromCourse_guarded(course.id, Number(e.currentTarget.dataset.id)));
     });
+
+    // Update admin UI affordances for these buttons
+    updateAdminUI();
   }
 
-  // Add / Save assignment modal
+  // Add / Save assignment modal (guarded)
   window.openAddAssignment = function () {
     const m = document.getElementById('assignment-modal');
     if (!m) return;
@@ -844,10 +923,12 @@ function adminUpdateAttendance() {
       const opt = document.createElement('option'); opt.value = c; opt.textContent = c; sel.appendChild(opt);
     });
     m.removeAttribute('hidden'); m.classList.add('open');
+    updateAdminUI();
   };
   window.closeAssignmentModal = function () { const m = document.getElementById('assignment-modal'); if (m) { m.setAttribute('hidden', ''); m.classList.remove('open'); } };
 
-  window.saveAssignment = function () {
+  window.saveAssignment_guarded = function () {
+    if (!requireAdmin('create assignments')) return;
     const title = (document.getElementById('gb-assign-title')?.value || '').trim();
     if (!title) return alert('Title required');
     const category = document.getElementById('gb-assign-category')?.value || 'homework';
@@ -869,8 +950,9 @@ function adminUpdateAttendance() {
     renderAssignmentsTable();
   };
 
-  function deleteAssignmentFromCourse(courseId, assignmentId) {
-    if (!confirm('Delete assignment?')) return;
+  function deleteAssignmentFromCourse_guarded(courseId, assignmentId) {
+    if (!requireAdmin('delete assignments')) return;
+    if (!confirm('Delete this assignment permanently? This cannot be undone.')) return;
     const term = appState.semesters.find(s => s.id === appState.currentSemesterId);
     const course = term?.courses.find(c => c.id === courseId);
     if (!course) return;
@@ -879,8 +961,10 @@ function adminUpdateAttendance() {
     renderAssignmentsTable();
   }
 
-  // Mark assignment missing and apply draft grade
-  function markAssignmentMissing(courseId, assignmentId) {
+  // Mark assignment missing and apply draft grade (guarded)
+  function markAssignmentMissing_guarded(courseId, assignmentId) {
+    if (!requireAdmin('mark assignments missing')) return;
+    if (!confirm('Mark this assignment as missing and apply draft grade?')) return;
     const term = appState.semesters.find(s => s.id === appState.currentSemesterId);
     const course = term?.courses.find(c => c.id === courseId);
     if (!course) return;
@@ -901,17 +985,18 @@ function adminUpdateAttendance() {
     renderAssignmentsTable();
     showToast('Marked missing and applied draft grade (hidden from students).');
   }
-  window.markAssignmentMissing = markAssignmentMissing;
+  window.markAssignmentMissing_guarded = markAssignmentMissing_guarded;
 
-  // Return draft (finalize) — teacher action to convert draft to actual score
-  function returnDraftForAssignment(courseId, assignmentId) {
+  // Return draft (finalize) — teacher action to convert draft to actual score (guarded)
+  function returnDraftForAssignment_guarded(courseId, assignmentId) {
+    if (!requireAdmin('return draft grades')) return;
+    if (!confirm('Return the draft grade and finalize this assignment?')) return;
     const term = appState.semesters.find(s => s.id === appState.currentSemesterId);
     const course = term?.courses.find(c => c.id === courseId);
     if (!course) return;
     const a = course.assignments.find(x => x.id === assignmentId);
     if (!a) return;
     if (!a.draftApplied) return alert('No draft applied to this assignment.');
-    // If draftScore is null, treat as zero; otherwise use draftScore
     const finalScore = (a.draftScore == null) ? 0 : a.draftScore;
     a.score = finalScore;
     a.total = a.total || a.points || 0;
@@ -922,7 +1007,7 @@ function adminUpdateAttendance() {
     renderAssignmentsTable();
     showToast('Draft returned and finalized.');
   }
-  window.returnDraftForAssignment = returnDraftForAssignment;
+  window.returnDraftForAssignment_guarded = returnDraftForAssignment_guarded;
 
   // Export gradebook (JSON)
   window.exportGradebook = function () {
@@ -936,8 +1021,9 @@ function adminUpdateAttendance() {
     URL.revokeObjectURL(url);
   };
 
-  // Save gradebook settings
-  window.saveGradebookSettings = function () {
+  // Save gradebook settings (guarded)
+  window.saveGradebookSettings_guarded = function () {
+    if (!requireAdmin('change gradebook settings')) return;
     const draftEnabled = document.getElementById('gb-draft-enabled')?.checked;
     const draftPercent = Number(document.getElementById('gb-draft-percent')?.value || 0);
     const calcMode = Array.from(document.querySelectorAll('input[name="gb-calc-mode"]')).find(r => r.checked)?.value || 'weighted';
@@ -977,19 +1063,14 @@ function adminUpdateAttendance() {
   }
 
   // Mount gradebook view when user navigates to 'grades' or when app loads and view is grades
-  // Hook into existing navigate function by overriding renderGrades to call renderGradebookView when appropriate
-  const originalRenderGrades = renderGrades;
-  renderGrades = function (mount) {
-    // If gradebook UI is desired as the grades view, mount the gradebook view
-    renderGradebookView();
-  };
-
-  // Initialize: if current view is grades on load, render gradebook
   document.addEventListener('DOMContentLoaded', () => {
-    // If the app initially loads on grades view, render gradebook
     const initialView = document.querySelector('.nav-item.active')?.dataset?.view || 'dashboard';
     if (initialView === 'grades') renderGradebookView();
+    updateAdminUI();
   });
+
+  // Expose renderGradebookView for use by renderGrades
+  window.renderGradebookView = renderGradebookView;
 
 })();
 
@@ -1009,11 +1090,7 @@ function closeAdminModal() {
 function verifyAdmin() {
   const pass = document.getElementById('admin-pass')?.value;
   if (pass === '1234') {
-    document.getElementById('admin-nav')?.classList.remove('hidden');
-    document.getElementById('admin-trigger')?.classList.add('admin-unlocked');
-    appState.role = 'admin';
-    commitSystemState();
-    alert('Admin token elevated.');
+    onRoleElevatedToAdmin();
     closeAdminModal();
   } else {
     alert('Invalid passcode.');
@@ -1076,4 +1153,7 @@ document.addEventListener('DOMContentLoaded', () => {
       timeEl.textContent = now.toLocaleTimeString();
     }, 1000);
   }
+
+  // Ensure admin UI reflects current role
+  updateAdminUI();
 });
