@@ -1,159 +1,131 @@
 /**
- * LMS CORE ENGINE - PERSISTENT STATE
+ * CANVAS REPLICA ENGINE - ADVANCED ADMIN
  */
 
-const STORAGE_KEY = "LMS_ULTIMATE_DATA";
-const ADMIN_PASSCODE = "022705";
+const STORAGE_KEY = "CANVAS_REPLICA_DATA";
+const ADMIN_PASS = "022705";
 
 const INITIAL_DATA = {
     student: {
-        name: "Alex Rivard",
-        bio: "Senior CS Student | Academic Portal Lead",
+        name: "Caleb Kritzar",
+        bio: "Full Stack Student | Canvas Enthusiast",
         avatar: "https://ui-avatars.com/api/?name=Alex+Rivard&background=6366f1&color=fff",
-        pfp_custom: null
+        custom_pfp: null
     },
     config: {
         gradeScale: { A: 90, B: 80, C: 70, D: 60 },
-        weights: [
-            { id: "exams", name: "Exams", value: 50 },
-            { id: "hw", name: "Homework", value: 30 },
-            { id: "projects", name: "Projects", value: 20 }
+        categories: [
+            { id: "hw", name: "Homework", weight: 30 },
+            { id: "exams", name: "Exams", weight: 50 },
+            { id: "projects", name: "Projects", weight: 20 }
         ]
     },
     courses: [
-        { id: "c1", name: "Network Security", instructor: "Dr. Smith" },
-        { id: "c2", name: "Web Development", instructor: "Prof. Miller" }
+        { id: "c1", name: "Mobile Development", instructor: "Dr. Jobs" },
+        { id: "c2", name: "Algorithm Design", instructor: "Prof. Knuth" }
     ],
     assignments: [
-        { id: 1, courseId: "c1", title: "Firewall Lab", type: "hw", score: 95, total: 100 },
-        { id: 2, courseId: "c1", title: "Midterm Exam", type: "exams", score: 88, total: 100 }
+        { id: 101, courseId: "c1", title: "First iOS App", type: "projects", score: 95, total: 100 },
+        { id: 102, courseId: "c2", title: "Sorting Lab", type: "hw", score: 82, total: 100 }
     ]
 };
 
 let state = JSON.parse(localStorage.getItem(STORAGE_KEY)) || INITIAL_DATA;
-let isAdmin = false;
+let editingAssignmentId = null; // Tracks if we are editing or creating
 
-// --- CORE APP ---
-
+// --- CORE ---
 document.addEventListener('DOMContentLoaded', () => {
     updateClock();
     setInterval(updateClock, 1000);
-    renderUserPill();
+    renderHeader();
     navigate('dashboard');
 });
 
 function save() {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-    renderUserPill();
+    renderHeader();
 }
 
 function navigate(view, params = null) {
-    const content = document.getElementById('content-area');
+    const el = document.getElementById('content-area');
     const title = document.getElementById('view-title');
-    
-    // UI Active State
     document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
-    const activeNav = document.querySelector(`[data-view="${view}"]`);
-    if (activeNav) activeNav.classList.add('active');
+    const nav = document.querySelector(`[data-view="${view}"]`);
+    if(nav) nav.classList.add('active');
 
-    // View Routing
     switch(view) {
-        case 'dashboard': renderDashboard(content); title.innerText = "Student Dashboard"; break;
-        case 'courses': renderCourses(content); title.innerText = "My Enrolled Courses"; break;
-        case 'course-detail': renderCourseDetail(content, params); title.innerText = "Course Hub"; break;
-        case 'assignments': renderAssignments(content); title.innerText = "All Tasks"; break;
-        case 'grades': renderGrades(content); title.innerText = "Grades & Standing"; break;
-        case 'profile': renderProfile(content); title.innerText = "Student Profile"; break;
-        case 'admin': renderAdmin(content); title.innerText = "Management Console"; break;
-        case 'ai': renderAI(content); title.innerText = "AI Study Assistant"; break;
+        case 'dashboard': renderDashboard(el); title.innerText = "Global Dashboard"; break;
+        case 'courses': renderCourses(el); title.innerText = "All Courses"; break;
+        case 'course-view': renderCourseDetail(el, params); title.innerText = "Course Syllabus"; break;
+        case 'assignments': renderAssignments(el); title.innerText = "Assignment List"; break;
+        case 'grades': renderGrades(el); title.innerText = "Final Grades"; break;
+        case 'profile': renderProfile(el); title.innerText = "User Profile"; break;
+        case 'admin': renderAdmin(el); title.innerText = "Canvas Admin Console"; break;
     }
-    
     if (window.innerWidth < 900) toggleSidebar(false);
 }
 
-// --- RENDERERS ---
+// --- VIEWS ---
 
 function renderDashboard(el) {
-    const overall = calculateOverallGPA();
+    const stats = calculateGPA();
     el.innerHTML = `
-        <div class="grid">
-            <div class="card stat-box">
+        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap:1.5rem;">
+            <div class="card">
                 <p class="text-dim">Cumulative GPA</p>
-                <h1>${overall.gpa}</h1>
-                <p style="color:var(--success)"><i class="fas fa-caret-up"></i> Academic Excellence</p>
+                <h1 style="font-size:3rem">${stats}</h1>
             </div>
-            <div class="card stat-box">
-                <p class="text-dim">Total Assignments</p>
-                <h1>${state.assignments.length}</h1>
-                <p class="text-dim">Across ${state.courses.length} classes</p>
+            <div class="card">
+                <p class="text-dim">Enrolled Courses</p>
+                <h1 style="font-size:3rem">${state.courses.length}</h1>
             </div>
         </div>
         <div class="card" style="margin-top:1.5rem">
-            <h3>Recent Grades</h3>
-            <div class="table-wrapper">
-                <table>
-                    ${state.assignments.slice(-4).reverse().map(a => `
-                        <tr>
-                            <td>${a.title}</td>
-                            <td class="text-dim">${state.courses.find(c => c.id === a.courseId)?.name}</td>
-                            <td style="color:var(--primary); font-weight:bold">${((a.score/a.total)*100).toFixed(1)}%</td>
-                        </tr>
-                    `).join('')}
-                </table>
+            <h3>Quick Actions</h3>
+            <div style="display:flex; gap:10px; margin-top:1rem">
+                <button class="btn btn-primary" onclick="navigate('assignments')">View All Tasks</button>
+                <button class="btn btn-secondary" onclick="navigate('courses')">Course Dashboard</button>
             </div>
         </div>
     `;
 }
 
 function renderCourses(el) {
-    el.innerHTML = `<div class="grid">
+    el.innerHTML = `<div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap:1.5rem">
         ${state.courses.map(c => {
-            const data = calculateCourseGrade(c.id);
+            const g = calculateCourseGrade(c.id);
             return `
-                <div class="card" onclick="navigate('course-detail', '${c.id}')" style="cursor:pointer">
-                    <div style="display:flex; justify-content:space-between">
+                <div class="card" onclick="navigate('course-view', '${c.id}')" style="cursor:pointer">
+                    <div style="display:flex; justify-content:space-between; align-items:start">
                         <h3>${c.name}</h3>
-                        <span style="color:var(--primary); font-weight:bold">${data.letter}</span>
+                        <span style="color:var(--primary); font-weight:bold">${g.letter}</span>
                     </div>
                     <p class="text-dim">${c.instructor}</p>
-                    <div style="margin-top:1.5rem">
-                        <div style="height:6px; background:rgba(255,255,255,0.1); border-radius:10px">
-                            <div style="width:${data.percent}%; height:100%; background:var(--primary); border-radius:10px"></div>
-                        </div>
-                        <p style="font-size:0.8rem; margin-top:5px">${data.percent}% Weighted Average</p>
-                    </div>
                 </div>
             `;
         }).join('')}
     </div>`;
 }
 
-function renderCourseDetail(el, courseId) {
-    const course = state.courses.find(c => c.id === courseId);
-    const asgns = state.assignments.filter(a => a.courseId === courseId);
-    const grade = calculateCourseGrade(courseId);
+function renderCourseDetail(el, cid) {
+    const c = state.courses.find(x => x.id === cid);
+    const asgns = state.assignments.filter(a => a.courseId === cid);
+    const g = calculateCourseGrade(cid);
 
     el.innerHTML = `
-        <button class="btn btn-secondary" onclick="navigate('courses')" style="margin-bottom:1.5rem">← Back to Courses</button>
+        <button class="btn btn-secondary" onclick="navigate('courses')" style="margin-bottom:1.5rem">← Back</button>
         <div class="card">
-            <h1>${course.name}</h1>
-            <p class="text-dim">Instructor: ${course.instructor}</p>
-            <div style="font-size:3rem; font-weight:800; margin-top:1rem; color:var(--primary)">${grade.percent}%</div>
-            <p>Letter Grade: ${grade.letter}</p>
+            <h1>${c.name}</h1>
+            <p>${c.instructor}</p>
+            <h2 style="color:var(--primary); margin-top:1rem">${g.percent}% (${g.letter})</h2>
         </div>
         <div class="card">
-            <h3>Assignments for this Class</h3>
+            <h3>Syllabus / Assignments</h3>
             <div class="table-wrapper">
                 <table>
-                    <thead><tr><th>Task</th><th>Category</th><th>Score</th></tr></thead>
+                    <thead><tr><th>Name</th><th>Category</th><th>Grade</th></tr></thead>
                     <tbody>
-                        ${asgns.map(a => `
-                            <tr>
-                                <td>${a.title}</td>
-                                <td class="text-dim">${a.type.toUpperCase()}</td>
-                                <td>${a.score}/${a.total}</td>
-                            </tr>
-                        `).join('')}
+                        ${asgns.map(a => `<tr><td>${a.title}</td><td>${a.type}</td><td>${a.score}/${a.total}</td></tr>`).join('')}
                     </tbody>
                 </table>
             </div>
@@ -163,195 +135,233 @@ function renderCourseDetail(el, courseId) {
 
 function renderProfile(el) {
     el.innerHTML = `
+        <div class="card" style="text-align:center">
+            <img src="${state.student.custom_pfp || state.student.avatar}" style="width:120px; height:120px; border-radius:50%; object-fit:cover; border:3px solid var(--primary)">
+            <input type="file" id="pfp-input" style="display:none" onchange="processPfp(event)">
+            <div style="margin-top:1rem">
+                <button class="btn btn-secondary btn-sm" onclick="document.getElementById('pfp-input').click()">Upload Photo</button>
+            </div>
+        </div>
         <div class="card">
-            <h2>Edit Student Profile</h2>
-            <div class="form-group" style="margin-top:1.5rem">
-                <label>Change Profile Picture</label>
-                <input type="file" accept="image/*" onchange="uploadAvatar(event)">
-            </div>
-            <div class="form-group">
-                <label>Full Name</label>
-                <input type="text" id="p-name" value="${state.student.name}">
-            </div>
-            <div class="form-group">
-                <label>Bio</label>
-                <textarea id="p-bio" rows="4">${state.student.bio}</textarea>
-            </div>
-            <button class="btn btn-primary" onclick="updateProfile()">Save Profile</button>
+            <h3>Personal Info</h3>
+            <label>Full Name</label>
+            <input id="prof-name" value="${state.student.name}">
+            <label>Bio</label>
+            <textarea id="prof-bio" rows="3">${state.student.bio}</textarea>
+            <button class="btn btn-primary" style="margin-top:1rem" onclick="updateProfile()">Update Profile</button>
         </div>
     `;
 }
+
+// --- ADMIN PORTAL (THE HUB) ---
 
 function renderAdmin(el) {
     el.innerHTML = `
-        <div class="card">
-            <h3>1. Create New Class</h3>
-            <div class="grid" style="grid-template-columns: 1fr 1fr auto; align-items:end; gap:10px">
-                <div><label>Class Name</label><input id="adm-c-name"></div>
-                <div><label>Instructor</label><input id="adm-c-instr"></div>
-                <button class="btn btn-primary" onclick="adminAddCourse()">Add</button>
-            </div>
-        </div>
-        <div class="card">
-            <h3>2. Post Grade (Assignment)</h3>
+        <div class="card" id="asgn-editor-card">
+            <h3 id="editor-title">Post New Assignment/Grade</h3>
             <div class="form-group">
-                <label>Select Course</label>
+                <label>Course</label>
                 <select id="adm-a-cid">${state.courses.map(c => `<option value="${c.id}">${c.name}</option>`)}</select>
             </div>
             <div class="form-group">
-                <label>Assignment Title</label>
-                <input id="adm-a-title">
+                <label>Assignment Name</label>
+                <input id="adm-a-title" placeholder="e.g. Chapter 1 Quiz">
             </div>
-            <div class="grid" style="grid-template-columns: 1fr 1fr 1fr; gap:10px">
-                <div><label>Category</label><select id="adm-a-type">${state.config.weights.map(w => `<option value="${w.id}">${w.name}</option>`)}</select></div>
+            <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px">
+                <div><label>Type</label><select id="adm-a-type">${state.config.categories.map(cat => `<option value="${cat.id}">${cat.name}</option>`)}</select></div>
                 <div><label>Score</label><input type="number" id="adm-a-score"></div>
-                <div><label>Total</label><input type="number" id="adm-a-total"></div>
+                <div><label>Total Points</label><input type="number" id="adm-a-total"></div>
             </div>
-            <button class="btn btn-primary" style="margin-top:15px" onclick="adminAddAsgn()">Post Grade</button>
+            <div style="margin-top:1.5rem; display:flex; gap:10px">
+                <button class="btn btn-primary" onclick="adminSubmitAsgn()" id="asgn-submit-btn">Post Grade</button>
+                <button class="btn btn-secondary" onclick="resetAsgnEditor()" id="asgn-cancel-btn" style="display:none">Cancel Edit</button>
+            </div>
         </div>
+
         <div class="card">
-            <h3>3. Grade Scale & Weights</h3>
-            <p class="text-dim">Current: Exams=${state.config.weights.find(w=>w.id==='exams').value}% | HW=${state.config.weights.find(w=>w.id==='hw').value}%</p>
-            <button class="btn btn-danger" onclick="resetAll()">Reset All Data</button>
+            <h3>Gradebook Manager</h3>
+            <div class="table-wrapper">
+                <table>
+                    <thead><tr><th>Task</th><th>Course</th><th>Actions</th></tr></thead>
+                    <tbody>
+                        ${state.assignments.map(a => `
+                            <tr>
+                                <td>${a.title}</td>
+                                <td class="text-dim">${state.courses.find(c => c.id === a.courseId)?.name}</td>
+                                <td>
+                                    <button class="btn btn-sm btn-primary" onclick="prepareEditAsgn(${a.id})"><i class="fas fa-edit"></i></button>
+                                    <button class="btn btn-sm btn-danger" onclick="deleteAsgn(${a.id})"><i class="fas fa-trash"></i></button>
+                                </td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="card">
+            <h3>Course Manager</h3>
+            <div style="display:flex; gap:10px; margin-bottom:1rem">
+                <input id="new-c-name" placeholder="New Course Name">
+                <button class="btn btn-primary" onclick="addClass()">Add Class</button>
+            </div>
+            <div class="table-wrapper">
+                <table>
+                    ${state.courses.map(c => `
+                        <tr>
+                            <td>${c.name}</td>
+                            <td style="text-align:right"><button class="btn btn-sm btn-danger" onclick="deleteClass('${c.id}')">Remove</button></td>
+                        </tr>
+                    `).join('')}
+                </table>
+            </div>
         </div>
     `;
 }
 
-function renderAI(el) {
-    el.innerHTML = `
-        <div class="card chat-container">
-            <h3>AI Tutor</h3>
-            <div class="chat-window" id="chat-win">
-                <div class="msg ai">Hi ${state.student.name.split(' ')[0]}! I see you have ${state.assignments.length} grades posted. How can I help you study?</div>
-            </div>
-            <div style="display:flex; gap:10px">
-                <input id="ai-msg" placeholder="Ask about your grades...">
-                <button class="btn btn-primary" onclick="sendAI()">Ask</button>
-            </div>
-        </div>
-    `;
-}
+// --- ADMIN LOGIC ---
 
-// --- LOGIC ---
-
-function calculateCourseGrade(courseId) {
-    const asgns = state.assignments.filter(a => a.courseId === courseId);
-    if (!asgns.length) return { percent: 0, letter: 'N/A' };
-
-    let weightedSum = 0;
-    let totalWeights = 0;
-
-    state.config.weights.forEach(cat => {
-        const catAsgns = asgns.filter(a => a.type === cat.id);
-        if (catAsgns.length) {
-            const avg = catAsgns.reduce((s, a) => s + (a.score / a.total), 0) / catAsgns.length;
-            weightedSum += avg * cat.value;
-            totalWeights += cat.value;
-        }
-    });
-
-    const final = totalWeights > 0 ? (weightedSum / totalWeights) * 100 : 0;
-    let letter = 'F';
-    if (final >= state.config.gradeScale.A) letter = 'A';
-    else if (final >= state.config.gradeScale.B) letter = 'B';
-    else if (final >= state.config.gradeScale.C) letter = 'C';
-
-    return { percent: final.toFixed(1), letter };
-}
-
-function calculateOverallGPA() {
-    if (!state.courses.length) return { gpa: "0.00" };
-    let points = 0;
-    state.courses.forEach(c => {
-        const g = calculateCourseGrade(c.id);
-        if (g.letter === 'A') points += 4.0;
-        else if (g.letter === 'B') points += 3.0;
-        else if (g.letter === 'C') points += 2.0;
-    });
-    return { gpa: (points / state.courses.length).toFixed(2) };
-}
-
-function uploadAvatar(e) {
-    const file = e.target.files[0];
-    const reader = new FileReader();
-    reader.onloadend = () => {
-        state.student.pfp_custom = reader.result;
-        save();
-        alert("PFP Updated!");
-    };
-    if (file) reader.readAsDataURL(file);
-}
-
-function updateProfile() {
-    state.student.name = document.getElementById('p-name').value;
-    state.student.bio = document.getElementById('p-bio').value;
-    save();
-    navigate('dashboard');
-}
-
-function adminAddCourse() {
-    const name = document.getElementById('adm-c-name').value;
-    const instr = document.getElementById('adm-c-instr').value;
-    if (!name) return;
-    state.courses.push({ id: 'c' + Date.now(), name, instructor: instr });
-    save();
-    navigate('admin');
-}
-
-function adminAddAsgn() {
+function adminSubmitAsgn() {
     const title = document.getElementById('adm-a-title').value;
     const cid = document.getElementById('adm-a-cid').value;
     const type = document.getElementById('adm-a-type').value;
     const score = parseFloat(document.getElementById('adm-a-score').value);
     const total = parseFloat(document.getElementById('adm-a-total').value);
 
-    state.assignments.push({ id: Date.now(), courseId: cid, title, type, score, total });
+    if(!title || isNaN(score)) return alert("Please fill details correctly.");
+
+    if (editingAssignmentId) {
+        // UPDATE MODE
+        const idx = state.assignments.findIndex(a => a.id === editingAssignmentId);
+        state.assignments[idx] = { ...state.assignments[idx], courseId: cid, title, type, score, total };
+        editingAssignmentId = null;
+        alert("Assignment updated successfully!");
+    } else {
+        // CREATE MODE
+        state.assignments.push({ id: Date.now(), courseId: cid, title, type, score, total });
+        alert("Grade posted!");
+    }
+
     save();
-    alert("Grade Posted!");
     navigate('admin');
 }
 
-function sendAI() {
-    const input = document.getElementById('ai-msg');
-    const win = document.getElementById('chat-win');
-    if (!input.value) return;
+function prepareEditAsgn(id) {
+    const a = state.assignments.find(x => x.id === id);
+    editingAssignmentId = id;
 
-    win.innerHTML += `<div class="msg user">${input.value}</div>`;
-    const q = input.value.toLowerCase();
-    let res = "I'm not sure. Try asking about your GPA.";
+    // Scroll to form and highlight
+    const card = document.getElementById('asgn-editor-card');
+    card.classList.add('editing-highlight');
+    document.getElementById('editor-title').innerText = "Editing: " + a.title;
+    document.getElementById('asgn-submit-btn').innerText = "Update Grade";
+    document.getElementById('asgn-cancel-btn').style.display = "inline-flex";
 
-    if (q.includes("gpa")) res = `Your current GPA is ${calculateOverallGPA().gpa}.`;
-    if (q.includes("hi") || q.includes("hello")) res = `Hello ${state.student.name}! How are your ${state.courses.length} classes going?`;
+    // Fill form
+    document.getElementById('adm-a-title').value = a.title;
+    document.getElementById('adm-a-cid').value = a.courseId;
+    document.getElementById('adm-a-type').value = a.type;
+    document.getElementById('adm-a-score').value = a.score;
+    document.getElementById('adm-a-total').value = a.total;
 
-    setTimeout(() => {
-        win.innerHTML += `<div class="msg ai">${res}</div>`;
-        win.scrollTop = win.scrollHeight;
-    }, 500);
-    input.value = "";
+    window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
-function attemptAdminLogin() {
-    if (document.getElementById('admin-pass-input').value === ADMIN_PASSCODE) {
-        isAdmin = true;
-        document.getElementById('admin-nav').style.display = 'flex';
-        document.getElementById('lock-btn').innerHTML = '<i class="fas fa-unlock"></i> <span>Admin Active</span>';
-        closeAdminModal();
+function resetAsgnEditor() {
+    editingAssignmentId = null;
+    navigate('admin');
+}
+
+function deleteAsgn(id) {
+    if(confirm("Delete this assignment?")) {
+        state.assignments = state.assignments.filter(a => a.id !== id);
+        save();
         navigate('admin');
-    } else {
-        alert("Access Denied");
     }
 }
 
-function renderUserPill() {
-    const p = state.student;
+function addClass() {
+    const name = document.getElementById('new-c-name').value;
+    if(!name) return;
+    state.courses.push({ id: 'c' + Date.now(), name, instructor: "TBA" });
+    save();
+    navigate('admin');
+}
+
+function deleteClass(id) {
+    if(confirm("Deleting this class will also delete its assignments. Proceed?")) {
+        state.courses = state.courses.filter(c => c.id !== id);
+        state.assignments = state.assignments.filter(a => a.courseId !== id);
+        save();
+        navigate('admin');
+    }
+}
+
+// --- UTILS ---
+
+function calculateCourseGrade(cid) {
+    const asgns = state.assignments.filter(a => a.courseId === cid);
+    if(!asgns.length) return { percent: 0, letter: 'N/A' };
+    
+    let wSum = 0, wTotal = 0;
+    state.config.categories.forEach(cat => {
+        const matching = asgns.filter(a => a.type === cat.id);
+        if(matching.length) {
+            const avg = matching.reduce((s, a) => s + (a.score/a.total), 0) / matching.length;
+            wSum += avg * cat.weight;
+            wTotal += cat.weight;
+        }
+    });
+    const p = wTotal > 0 ? (wSum / wTotal) * 100 : 0;
+    let l = 'F';
+    if(p >= state.config.gradeScale.A) l = 'A';
+    else if(p >= state.config.gradeScale.B) l = 'B';
+    else if(p >= state.config.gradeScale.C) l = 'C';
+    return { percent: p.toFixed(1), letter: l };
+}
+
+function calculateGPA() {
+    if(!state.courses.length) return "0.00";
+    let pts = 0;
+    state.courses.forEach(c => {
+        const g = calculateCourseGrade(c.id);
+        if(g.letter === 'A') pts += 4.0;
+        else if(g.letter === 'B') pts += 3.0;
+        else if(g.letter === 'C') pts += 2.0;
+    });
+    return (pts / state.courses.length).toFixed(2);
+}
+
+function processPfp(e) {
+    const reader = new FileReader();
+    reader.onload = () => { state.student.custom_pfp = reader.result; save(); navigate('profile'); };
+    reader.readAsDataURL(e.target.files[0]);
+}
+
+function updateProfile() {
+    state.student.name = document.getElementById('prof-name').value;
+    state.student.bio = document.getElementById('prof-bio').value;
+    save();
+    alert("Profile Updated!");
+}
+
+function attemptAdminLogin() {
+    if(document.getElementById('admin-pass-input').value === ADMIN_PASS) {
+        document.getElementById('admin-nav').style.display = 'flex';
+        document.getElementById('lock-btn').innerHTML = '<i class="fas fa-unlock"></i> <span>Admin Mode</span>';
+        closeAdminModal();
+        navigate('admin');
+    } else { alert("Error: Passcode Incorrect."); }
+}
+
+function renderHeader() {
     document.getElementById('pfp-pill').innerHTML = `
-        <span>${p.name.split(' ')[0]}</span>
-        <img src="${p.pfp_custom || p.avatar}">
+        <span>${state.student.name.split(' ')[0]}</span>
+        <img src="${state.student.custom_pfp || state.student.avatar}">
     `;
 }
 
+function toggleSidebar(v) { document.getElementById('sidebar').classList.toggle('open', v); }
 function openAdminModal() { document.getElementById('admin-modal').classList.add('open'); }
 function closeAdminModal() { document.getElementById('admin-modal').classList.remove('open'); }
-function toggleSidebar(val) { document.getElementById('sidebar').classList.toggle('open', val); }
 function updateClock() { document.getElementById('clock').innerText = new Date().toLocaleTimeString(); }
-function resetAll() { if(confirm("Reset everything?")) { localStorage.clear(); location.reload(); } }
