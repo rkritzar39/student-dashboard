@@ -3,112 +3,107 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Nexus LMS | Advanced Academic Portal</title>
+    <title>Nexus LMS | Advanced Student Portal</title>
     <link rel="stylesheet" href="style.css">
-    <!-- Google Fonts & Icons -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body class="dark-theme">
 
-    <!-- Admin Access Modal -->
-    <div id="admin-auth-modal" class="modal">
+    <!-- Admin Authentication Modal -->
+    <div id="admin-modal" class="modal">
         <div class="modal-content glass-card">
-            <h2><i class="fas fa-user-shield"></i> Admin Authentication</h2>
-            <p>Please enter the administrator passcode to enable write access.</p>
-            <input type="password" id="admin-password" placeholder="Passcode (Default: 1234)">
-            <div class="modal-actions">
-                <button class="btn btn-secondary" onclick="closeAdminModal()">Cancel</button>
-                <button class="btn btn-primary" onclick="verifyAdmin()">Login</button>
+            <div class="modal-header">
+                <h2><i class="fas fa-shield-halved"></i> Admin Login</h2>
+                <button class="close-btn" onclick="closeAdminModal()">&times;</button>
             </div>
+            <p>Accessing the Admin Portal allows you to mutate student data, grades, and schedules.</p>
+            <div class="form-group">
+                <input type="password" id="admin-pass" placeholder="Enter Access Code (1234)">
+            </div>
+            <button class="btn btn-primary full-width" onclick="verifyAdmin()">Unlock Portal</button>
         </div>
     </div>
 
-    <div class="app-shell">
+    <div class="app-layout">
         <!-- Sidebar Navigation -->
         <aside class="sidebar" id="sidebar">
             <div class="sidebar-header">
-                <div class="logo">
-                    <div class="logo-icon">N</div>
-                    <span>Nexus LMS</span>
+                <div class="brand">
+                    <div class="logo-box"><i class="fas fa-terminal"></i></div>
+                    <span>Nexus<strong>LMS</strong></span>
                 </div>
-                <button class="mobile-toggle" onclick="toggleSidebar()"><i class="fas fa-times"></i></button>
+                <button class="mobile-only close-sidebar" onclick="toggleSidebar()"><i class="fas fa-times"></i></button>
             </div>
 
             <nav class="nav-links">
                 <div class="nav-item active" data-view="dashboard" onclick="navigate('dashboard')">
-                    <i class="fas fa-th-large"></i> <span>Dashboard</span>
+                    <i class="fas fa-grid-2"></i> <span>Dashboard</span>
                 </div>
                 <div class="nav-item" data-view="courses" onclick="navigate('courses')">
-                    <i class="fas fa-book"></i> <span>Courses</span>
+                    <i class="fas fa-book-bookmark"></i> <span>Courses</span>
                 </div>
                 <div class="nav-item" data-view="assignments" onclick="navigate('assignments')">
-                    <i class="fas fa-tasks"></i> <span>Assignments</span>
+                    <i class="fas fa-list-check"></i> <span>Assignments</span>
                 </div>
                 <div class="nav-item" data-view="grades" onclick="navigate('grades')">
-                    <i class="fas fa-chart-line"></i> <span>Grades</span>
+                    <i class="fas fa-chart-simple"></i> <span>Grades</span>
                 </div>
                 <div class="nav-item" data-view="schedule" onclick="navigate('schedule')">
-                    <i class="fas fa-calendar-alt"></i> <span>Schedule</span>
-                </div>
-                <div class="nav-item" data-view="announcements" onclick="navigate('announcements')">
-                    <i class="fas fa-bullhorn"></i> <span>Announcements</span>
+                    <i class="fas fa-calendar-days"></i> <span>Schedule</span>
                 </div>
                 
                 <div class="nav-divider"></div>
                 
-                <div class="nav-item admin-only hidden" id="admin-nav" data-view="admin" onclick="navigate('admin')">
-                    <i class="fas fa-tools"></i> <span>Admin Panel</span>
+                <div class="nav-item admin-link hidden" id="admin-nav" data-view="admin" onclick="navigate('admin')">
+                    <i class="fas fa-sliders"></i> <span>Admin Panel</span>
                 </div>
             </nav>
 
             <div class="sidebar-footer">
-                <button class="btn-admin-toggle" id="admin-status-btn" onclick="openAdminModal()">
-                    <i class="fas fa-lock"></i> <span>Enable Admin</span>
+                <button class="admin-unlock" id="admin-trigger" onclick="openAdminModal()">
+                    <i class="fas fa-lock"></i> <span>Admin Access</span>
                 </button>
             </div>
         </aside>
 
-        <!-- Main Content Area -->
-        <main class="main-content">
-            <header class="top-bar">
-                <div class="header-left">
-                    <button class="burger-menu" onclick="toggleSidebar()"><i class="fas fa-bars"></i></button>
-                    <h1 id="view-title">Dashboard</h1>
+        <!-- Content Area -->
+        <main class="main-stage">
+            <header class="top-nav">
+                <div class="nav-left">
+                    <button class="burger" onclick="toggleSidebar()"><i class="fas fa-bars"></i></button>
+                    <div class="breadcrumb" id="view-indicator">Dashboard</div>
                 </div>
-                <div class="header-right">
-                    <div class="semester-picker">
-                        <select id="global-semester-select" onchange="changeSemester(this.value)">
-                            <!-- Dynamic -->
-                        </select>
-                    </div>
-                    <div class="header-user">
-                        <span id="current-clock">00:00:00</span>
-                        <div class="user-profile">
-                            <img src="https://ui-avatars.com/api/?name=Student+User&background=6366f1&color=fff" id="user-avatar" alt="User">
-                        </div>
+                <div class="nav-right">
+                    <select id="semester-selector" class="glass-select" onchange="switchSemester(this.value)"></select>
+                    <div class="user-pill">
+                        <span id="time-display">00:00:00</span>
+                        <div class="avatar"><img src="https://ui-avatars.com/api/?name=Student&background=6366f1&color=fff"></div>
                     </div>
                 </div>
             </header>
 
-            <div id="content-mount" class="view-mount">
-                <!-- Views Injected Here -->
+            <div id="mount" class="view-mount">
+                <!-- Dynamic Content Here -->
             </div>
         </main>
 
-        <!-- Gemini AI Chat Widget -->
-        <div id="ai-chat-widget" class="ai-chat">
-            <div class="ai-header" onclick="toggleAIChat()">
-                <div class="ai-title"><i class="fas fa-robot"></i> Nexus AI Assistant</div>
-                <i class="fas fa-chevron-up" id="ai-chevron"></i>
-            </div>
-            <div class="ai-body" id="ai-body">
-                <div class="ai-messages" id="ai-messages">
-                    <div class="msg bot">Hello! I'm your Gemini-powered assistant. I have access to your current grades and assignments. How can I help?</div>
+        <!-- AI Assistant Hub -->
+        <div class="ai-widget" id="ai-hub">
+            <div class="ai-header" onclick="toggleAI()">
+                <div class="ai-status">
+                    <span class="pulse"></span>
+                    <i class="fas fa-robot"></i> Nexus AI
                 </div>
-                <div class="ai-input-area">
-                    <input type="text" id="ai-input" placeholder="Ask AI about your grades...">
-                    <button onclick="sendAIMessage()"><i class="fas fa-paper-plane"></i></button>
+                <i class="fas fa-chevron-up" id="ai-icon"></i>
+            </div>
+            <div class="ai-content">
+                <div class="chat-area" id="chat-area">
+                    <div class="ai-msg">Hi! I'm your Gemini-powered AI. I have access to your GPA and assignments. What can I analyze for you?</div>
+                </div>
+                <div class="chat-input">
+                    <input type="text" id="ai-query" placeholder="Ask about your grades...">
+                    <button onclick="askAI()"><i class="fas fa-arrow-up"></i></button>
                 </div>
             </div>
         </div>
