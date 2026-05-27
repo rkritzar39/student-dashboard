@@ -3,110 +3,113 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="description" content="Nexus LMS - Advanced Student Portal for Academic Tracking">
     <title>Nexus LMS | Advanced Student Portal</title>
+    
     <link rel="stylesheet" href="style.css">
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body class="dark-theme">
 
-    <!-- Admin Authentication Modal -->
-    <div id="admin-modal" class="modal">
+    <div id="admin-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
         <div class="modal-content glass-card">
-            <div class="modal-header">
-                <h2><i class="fas fa-shield-halved"></i> Admin Login</h2>
-                <button class="close-btn" onclick="closeAdminModal()">&times;</button>
+            <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                <h2 id="modal-title" style="font-size: 1.5rem;"><i class="fas fa-shield-halved"></i> Admin Login</h2>
+                <button class="close-btn" onclick="closeAdminModal()" aria-label="Close Admin Modal" style="background: transparent; border: none; color: white; font-size: 1.5rem; cursor: pointer;">&times;</button>
             </div>
-            <p>Accessing the Admin Portal allows you to mutate student data, grades, and schedules.</p>
-            <div class="form-group">
-                <input type="password" id="admin-pass" placeholder="Enter Access Code (1234)">
+            <p style="color: var(--text-muted); margin-bottom: 1.5rem; line-height: 1.5;">Accessing the Admin Portal allows you to mutate student data, grades, and schedules.</p>
+            <div class="form-group" style="margin-bottom: 1.5rem;">
+                <label for="admin-pass" class="hidden">Access Code</label>
+                <input type="password" id="admin-pass" placeholder="Enter Access Code (1234)" style="width: 100%;">
             </div>
-            <button class="btn btn-primary full-width" onclick="verifyAdmin()">Unlock Portal</button>
+            <button class="btn btn-primary" style="width: 100%;" onclick="verifyAdmin()">Unlock Portal</button>
         </div>
     </div>
 
     <div class="app-layout">
-        <!-- Sidebar Navigation -->
-        <aside class="sidebar" id="sidebar">
-            <div class="sidebar-header">
+        <aside class="sidebar" id="sidebar" aria-label="Sidebar Navigation">
+            <div class="sidebar-header" style="display: flex; justify-content: space-between; align-items: center;">
                 <div class="brand">
                     <div class="logo-box"><i class="fas fa-terminal"></i></div>
                     <span>Nexus<strong>LMS</strong></span>
                 </div>
-                <button class="mobile-only close-sidebar" onclick="toggleSidebar()"><i class="fas fa-times"></i></button>
+                <button class="mobile-only close-sidebar burger" onclick="toggleSidebar()" aria-label="Close Sidebar"><i class="fas fa-times"></i></button>
             </div>
 
-            <nav class="nav-links">
-                <div class="nav-item active" data-view="dashboard" onclick="navigate('dashboard')">
+            <nav class="nav-links" aria-label="Main Menu">
+                <button class="nav-item active" style="width: 100%; text-align: left; background: transparent; border: none; font-size: 1rem;" data-view="dashboard" onclick="navigate('dashboard')">
                     <i class="fas fa-grid-2"></i> <span>Dashboard</span>
-                </div>
-                <div class="nav-item" data-view="courses" onclick="navigate('courses')">
+                </button>
+                <button class="nav-item" style="width: 100%; text-align: left; background: transparent; border: none; font-size: 1rem;" data-view="courses" onclick="navigate('courses')">
                     <i class="fas fa-book-bookmark"></i> <span>Courses</span>
-                </div>
-                <div class="nav-item" data-view="assignments" onclick="navigate('assignments')">
+                </button>
+                <button class="nav-item" style="width: 100%; text-align: left; background: transparent; border: none; font-size: 1rem;" data-view="assignments" onclick="navigate('assignments')">
                     <i class="fas fa-list-check"></i> <span>Assignments</span>
-                </div>
-                <div class="nav-item" data-view="grades" onclick="navigate('grades')">
+                </button>
+                <button class="nav-item" style="width: 100%; text-align: left; background: transparent; border: none; font-size: 1rem;" data-view="grades" onclick="navigate('grades')">
                     <i class="fas fa-chart-simple"></i> <span>Grades</span>
-                </div>
-                <div class="nav-item" data-view="schedule" onclick="navigate('schedule')">
+                </button>
+                <button class="nav-item" style="width: 100%; text-align: left; background: transparent; border: none; font-size: 1rem;" data-view="schedule" onclick="navigate('schedule')">
                     <i class="fas fa-calendar-days"></i> <span>Schedule</span>
-                </div>
+                </button>
                 
                 <div class="nav-divider"></div>
                 
-                <div class="nav-item admin-link hidden" id="admin-nav" data-view="admin" onclick="navigate('admin')">
+                <button class="nav-item admin-link hidden" style="width: 100%; text-align: left; background: transparent; border: none; font-size: 1rem;" id="admin-nav" data-view="admin" onclick="navigate('admin')">
                     <i class="fas fa-sliders"></i> <span>Admin Panel</span>
-                </div>
+                </button>
             </nav>
 
             <div class="sidebar-footer">
-                <button class="admin-unlock" id="admin-trigger" onclick="openAdminModal()">
+                <button class="admin-unlock" style="width: calc(100% - 2rem);" id="admin-trigger" onclick="openAdminModal()">
                     <i class="fas fa-lock"></i> <span>Admin Access</span>
                 </button>
             </div>
         </aside>
 
-        <!-- Content Area -->
         <main class="main-stage">
             <header class="top-nav">
-                <div class="nav-left">
-                    <button class="burger" onclick="toggleSidebar()"><i class="fas fa-bars"></i></button>
-                    <div class="breadcrumb" id="view-indicator">Dashboard</div>
+                <div class="nav-left" style="display: flex; align-items: center; gap: 15px;">
+                    <button class="burger" onclick="toggleSidebar()" aria-label="Open Sidebar Menu"><i class="fas fa-bars"></i></button>
+                    <h1 class="breadcrumb" id="view-indicator" style="font-size: 1.2rem; font-weight: 600; margin: 0;">Dashboard</h1>
                 </div>
-                <div class="nav-right">
-                    <select id="semester-selector" class="glass-select" onchange="switchSemester(this.value)"></select>
-                    <div class="user-pill">
-                        <span id="time-display">00:00:00</span>
-                        <div class="avatar"><img src="https://ui-avatars.com/api/?name=Student&background=6366f1&color=fff"></div>
+                <div class="nav-right" style="display: flex; align-items: center; gap: 20px;">
+                    <label for="semester-selector" class="hidden">Select Semester</label>
+                    <select id="semester-selector" class="glass-select" onchange="switchSemester(this.value)" aria-label="Select Semester"></select>
+                    
+                    <div class="user-pill" style="display: flex; align-items: center; gap: 12px;">
+                        <span id="time-display" aria-live="polite" style="color: var(--text-muted); font-family: monospace; font-size: 0.9rem;">00:00:00</span>
+                        <div class="avatar" style="width: 40px; height: 40px; border-radius: 50%; overflow: hidden; border: 2px solid var(--accent);">
+                            <img src="https://ui-avatars.com/api/?name=Student&background=6366f1&color=fff" alt="Student Profile Avatar" style="width: 100%; height: 100%; object-fit: cover;">
+                        </div>
                     </div>
                 </div>
             </header>
 
-            <div id="mount" class="view-mount">
-                <!-- Dynamic Content Here -->
-            </div>
+            <div id="mount" class="view-mount" role="region" aria-live="polite">
+                </div>
         </main>
 
-        <!-- AI Assistant Hub -->
-        <div class="ai-widget" id="ai-hub">
-            <div class="ai-header" onclick="toggleAI()">
+        <aside class="ai-widget" id="ai-hub" aria-label="AI Assistant Interface">
+            <button class="ai-header" onclick="toggleAI()" aria-expanded="false" aria-controls="ai-content" style="border: none; width: 100%; font-size: 1rem; font-family: inherit;">
                 <div class="ai-status">
                     <span class="pulse"></span>
                     <i class="fas fa-robot"></i> Nexus AI
                 </div>
                 <i class="fas fa-chevron-up" id="ai-icon"></i>
-            </div>
-            <div class="ai-content">
-                <div class="chat-area" id="chat-area">
+            </button>
+            <div class="ai-content" id="ai-content">
+                <div class="chat-area" id="chat-area" role="log" aria-live="polite">
                     <div class="ai-msg">Hi! I'm your Gemini-powered AI. I have access to your GPA and assignments. What can I analyze for you?</div>
                 </div>
                 <div class="chat-input">
-                    <input type="text" id="ai-query" placeholder="Ask about your grades...">
-                    <button onclick="askAI()"><i class="fas fa-arrow-up"></i></button>
+                    <label for="ai-query" class="hidden">Type your message</label>
+                    <input type="text" id="ai-query" placeholder="Ask about your grades..." onkeypress="if(event.key === 'Enter') askAI()">
+                    <button onclick="askAI()" aria-label="Send Message"><i class="fas fa-arrow-up"></i></button>
                 </div>
             </div>
-        </div>
+        </aside>
     </div>
 
     <script src="script.js"></script>
