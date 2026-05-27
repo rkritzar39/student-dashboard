@@ -1,84 +1,76 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-<title>LMS Dashboard</title>
-
-<link rel="stylesheet" href="style.css">
-
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>College Portal | Student Dashboard</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- Font Awesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
+<body class="dark-theme">
+    
+    <!-- Mobile Menu Toggle -->
+    <div class="mobile-toggle" id="mobile-toggle">
+        <i class="fas fa-bars"></i>
+    </div>
 
-<body>
+    <div class="container">
+        <!-- Sidebar Navigation -->
+        <nav class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <i class="fas fa-graduation-cap"></i>
+                    <span>UniPortal</span>
+                </div>
+            </div>
+            <ul class="nav-links">
+                <li class="active" data-section="dashboard"><i class="fas fa-th-large"></i> <span>Dashboard</span></li>
+                <li data-section="courses"><i class="fas fa-book"></i> <span>Courses</span></li>
+                <li data-section="assignments"><i class="fas fa-tasks"></i> <span>Assignments</span></li>
+                <li data-section="grades"><i class="fas fa-chart-line"></i> <span>Grades</span></li>
+                <li data-section="calendar"><i class="fas fa-calendar-alt"></i> <span>Calendar</span></li>
+                <li data-section="announcements"><i class="fas fa-bullhorn"></i> <span>Announcements</span></li>
+                <li data-section="resources"><i class="fas fa-folder-open"></i> <span>Resources</span></li>
+            </ul>
+            <div class="sidebar-footer">
+                <div class="theme-switch-wrapper">
+                    <i class="fas fa-moon"></i>
+                    <label class="theme-switch">
+                        <input type="checkbox" id="dark-mode-toggle" checked>
+                        <span class="slider round"></span>
+                    </label>
+                </div>
+            </div>
+        </nav>
 
-<div class="sidebar">
+        <!-- Main Content Area -->
+        <main class="main-content">
+            <!-- Top Header -->
+            <header class="top-header">
+                <div class="header-search">
+                    <i class="fas fa-search"></i>
+                    <input type="text" placeholder="Search assignments, courses...">
+                </div>
+                <div class="header-user">
+                    <div class="clock" id="real-time-clock">00:00:00</div>
+                    <div class="notifications">
+                        <i class="fas fa-bell"></i>
+                        <span class="badge" id="notif-badge">0</span>
+                    </div>
+                    <div class="profile-preview" id="student-profile-header">
+                        <!-- Dynamic Student Name -->
+                    </div>
+                </div>
+            </header>
 
-<h2>LMS Portal</h2>
+            <!-- Dynamic Section Container -->
+            <div id="content-render-area">
+                <!-- JavaScript will inject sections here -->
+            </div>
+        </main>
+    </div>
 
-<a href="#dashboard">Dashboard</a>
-<a href="#assignments">Assignments</a>
-<a href="#grades">Grades</a>
-<a href="#calendar">Calendar</a>
-<a href="#announcements">Announcements</a>
-
-</div>
-
-<div class="main">
-
-<div class="card" id="dashboard">
-
-<h1>Welcome Caleb</h1>
-
-<p>
-Welcome to your educational LMS dashboard.
-</p>
-
-</div>
-
-<div class="card" id="assignments">
-
-<h2>Assignments</h2>
-
-<p>
-No assignments due.
-</p>
-
-</div>
-
-<div class="card" id="grades">
-
-<h2>Grades</h2>
-
-<p>
-Grades appear here.
-</p>
-
-</div>
-
-<div class="card" id="calendar">
-
-<h2>Calendar</h2>
-
-<p>
-Upcoming assignments and events appear here.
-</p>
-
-</div>
-
-<div class="card" id="announcements">
-
-<h2>Announcements</h2>
-
-<p>Updates appear here.</p>
-
-</div>
-
-</div>
-
-<script src="script.js"></script>
-
+    <script src="script.js"></script>
 </body>
 </html>
