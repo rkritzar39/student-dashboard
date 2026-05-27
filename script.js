@@ -8,6 +8,7 @@ const STORAGE_KEY = "NEXUS_LMS_PRO_STATE";
 const DEFAULT_STATE = {
     role: 'student',
     currentSemesterId: 'f24',
+    activeCourseId: null, // Tracks which course is open
     semesters: [
         {
             id: 'f24',
@@ -59,14 +60,12 @@ function calculateCourseGrade(course) {
     cats.forEach(cat => {
         const catAsgns = course.assignments.filter(a => a.category === cat);
         if (catAsgns.length > 0) {
-            // Calculate percentage for this category
             const avg = catAsgns.reduce((sum, a) => sum + (a.score / a.total), 0) / catAsgns.length;
             weightedSum += (avg * 100) * (course.weights[cat] / 100);
             weightTotalUsed += course.weights[cat];
         }
     });
 
-    // Scale out of 100% based on categories actually completed
     const final = weightTotalUsed > 0 ? (weightedSum / (weightTotalUsed / 100)) : 0;
     return final.toFixed(1);
 }
@@ -79,7 +78,6 @@ function calculateSemesterGPA() {
     
     sem.courses.forEach(c => {
         const grade = parseFloat(calculateCourseGrade(c));
-        // Standard College 4.0 Scale
         if (grade >= 90) totalPoints += 4.0;
         else if (grade >= 80) totalPoints += 3.0;
         else if (grade >= 70) totalPoints += 2.0;
@@ -94,26 +92,37 @@ function navigate(view) {
     const mount = document.getElementById('mount');
     const indicator = document.getElementById('view-indicator');
     
-    // Update Sidebar Active State
+    // Update Sidebar Active State (Keep Courses highlighted if in course-detail)
     document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
-    
-    const targetNav = document.querySelector(`[data-view="${view}"]`);
+    const targetViewForNav = view === 'course-detail' ? 'courses' : view;
+    const targetNav = document.querySelector(`[data-view="${targetViewForNav}"]`);
     if (targetNav) targetNav.classList.add('active');
     
-    indicator.innerText = view.charAt(0).toUpperCase() + view.slice(1);
+    // Update breadcrumb
+    if (view === 'course-detail') {
+        indicator.innerText = "Course Details";
+    } else {
+        indicator.innerText = view.charAt(0).toUpperCase() + view.slice(1);
+    }
 
-    // Close mobile sidebar if open
     document.getElementById('sidebar').classList.remove('mobile-open');
 
     switch(view) {
         case 'dashboard': renderDashboard(mount); break;
         case 'courses': renderCourses(mount); break;
+        case 'course-detail': renderCourseDetail(mount); break;
         case 'assignments': renderAssignments(mount); break;
         case 'grades': renderGrades(mount); break;
         case 'schedule': renderSchedule(mount); break;
         case 'admin': renderAdmin(mount); break;
         default: renderDashboard(mount);
     }
+}
+
+function openCourse(courseId) {
+    appState.activeCourseId = courseId;
+    saveState();
+    navigate('course-detail');
 }
 
 // 4. RENDERING VIEWS
@@ -149,11 +158,69 @@ function renderDashboard(mount) {
                     <tbody>
                         ${sem.courses.length ? sem.courses.map(c => `
                             <tr>
-                                <td><strong>${c.title}</strong></td>
+                                <td><a class="course-link" onclick="openCourse('${c.id}')"><strong>${c.title}</strong></a></td>
                                 <td>${c.instructor}</td>
                                 <td style="color:var(--accent); font-weight:bold">${calculateCourseGrade(c)}%</td>
                             </tr>
                         `).join('') : `<tr><td colspan="3">No courses registered.</td></tr>`}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    `;
+}
+
+function renderCourses(mount) { 
+    const sem = appState.semesters.find(s => s.id === appState.currentSemesterId);
+    mount.innerHTML = `<div class="stats-grid">
+        ${sem.courses.length ? sem.courses.map(c => `
+        <div class="glass-card clickable-card" onclick="openCourse('${c.id}')">
+            <div style="height: 100px; background: var(--surface-hover); margin: -1.5rem -1.5rem 1rem -1.5rem; border-radius: var(--radius) var(--radius) 0 0; display: flex; align-items: center; justify-content: center; color: var(--accent); font-size: 2rem;">
+                <i class="fas fa-book"></i>
+            </div>
+            <h3 style="margin-bottom: 5px;">${c.title}</h3>
+            <p style="color:var(--text-muted); font-size: 0.9rem;"><i class="fas fa-user-tie"></i> ${c.instructor}</p>
+        </div>`).join('') : '<div class="glass-card"><p>No courses registered.</p></div>'}
+    </div>`; 
+}
+
+function renderCourseDetail(mount) {
+    const sem = appState.semesters.find(s => s.id === appState.currentSemesterId);
+    const course = sem.courses.find(c => c.id === appState.activeCourseId);
+
+    if (!course) {
+        mount.innerHTML = `<div class="glass-card"><h3>Course not found.</h3><button class="btn btn-secondary" onclick="navigate('courses')" style="margin-top: 1rem;">Back to Courses</button></div>`;
+        return;
+    }
+
+    mount.innerHTML = `
+        <button class="btn btn-secondary" onclick="navigate('courses')" style="margin-bottom: 1.5rem;">
+            <i class="fas fa-arrow-left"></i> Back to Courses
+        </button>
+        <div class="glass-card" style="margin-bottom: 2rem; border-left: 4px solid var(--accent);">
+            <h2 style="font-size: 1.8rem; color: var(--text); margin-bottom: 5px;">${course.title}</h2>
+            <p style="color: var(--text-muted); font-size: 1rem;"><i class="fas fa-user-tie"></i> ${course.instructor}</p>
+            <div style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid var(--border); display: flex; gap: 2rem;">
+                <div>
+                    <p class="text-muted" style="font-size: 0.85rem; text-transform: uppercase;">Current Grade</p>
+                    <p style="font-size: 1.5rem; font-weight: bold; color: var(--accent);">${calculateCourseGrade(course)}%</p>
+                </div>
+            </div>
+        </div>
+        <div class="glass-card">
+            <h3 style="margin-bottom: 1rem;">Assignments & Grades</h3>
+            <div class="table-container">
+                <table>
+                    <thead><tr><th>Title</th><th>Category</th><th>Score</th><th>Weight</th></tr></thead>
+                    <tbody>
+                        ${course.assignments.length ? course.assignments.map(a => `
+                            <tr>
+                                <td><strong>${a.title}</strong></td>
+                                <td><span style="background: var(--surface-hover); padding: 4px 8px; border-radius: 6px; font-size: 0.8rem;">${a.category.toUpperCase()}</span></td>
+                                <td><strong>${a.score}</strong> / ${a.total}</td>
+                                <td style="color:var(--text-muted)">${course.weights[a.category]}%</td>
+                            </tr>
+                        `).join('') : `<tr><td colspan="4">No assignments yet.</td></tr>`}
                     </tbody>
                 </table>
             </div>
@@ -172,7 +239,7 @@ function renderGrades(mount) {
     mount.innerHTML = sem.courses.map(course => `
         <div class="glass-card" style="margin-bottom:1.5rem">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem">
-                <h2 style="font-size: 1.2rem;">${course.title}</h2>
+                <h2 style="font-size: 1.2rem; cursor: pointer;" class="course-link" onclick="openCourse('${course.id}')">${course.title}</h2>
                 <span class="btn btn-secondary">${calculateCourseGrade(course)}%</span>
             </div>
             <div class="table-container">
@@ -284,12 +351,10 @@ function askAI() {
     
     if (!query) return;
 
-    // Post User Message
     area.innerHTML += `<div class="user-msg">${input.value}</div>`;
     input.value = "";
     area.scrollTop = area.scrollHeight;
 
-    // Simulate Network/Processing Delay
     setTimeout(() => {
         let reply = "I'm still learning about that specific module. Try asking me to check your **GPA** or **grades**!";
         
@@ -334,7 +399,6 @@ function initSelectors() {
         `<option value="${s.id}" ${s.id === appState.currentSemesterId ? 'selected' : ''}>${s.name}</option>`
     ).join('');
     
-    // Check if previously logged in as admin
     if (appState.role === 'admin') {
         document.getElementById('admin-nav').classList.remove('hidden');
         document.getElementById('admin-trigger').classList.add('admin-unlocked');
@@ -342,17 +406,9 @@ function initSelectors() {
     }
 }
 
-// Modals and Toggles
-function openAdminModal() { 
-    document.getElementById('admin-modal').classList.add('open'); 
-}
-function closeAdminModal() { 
-    document.getElementById('admin-modal').classList.remove('open'); 
-    document.getElementById('admin-pass').value = '';
-}
-function toggleSidebar() { 
-    document.getElementById('sidebar').classList.toggle('mobile-open'); 
-}
+function openAdminModal() { document.getElementById('admin-modal').classList.add('open'); }
+function closeAdminModal() { document.getElementById('admin-modal').classList.remove('open'); document.getElementById('admin-pass').value = ''; }
+function toggleSidebar() { document.getElementById('sidebar').classList.toggle('mobile-open'); }
 function toggleAI() { 
     const hub = document.getElementById('ai-hub');
     const icon = document.getElementById('ai-icon');
@@ -369,13 +425,11 @@ function toggleAI() {
     }
 }
 
-// Clock Logic
 function updateClock() {
     const now = new Date();
     document.getElementById('time-display').innerText = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 }
 
-// Simple Render for secondary views
 function renderSchedule(m) { 
     m.innerHTML = `<div class="glass-card"><h3 style="margin-bottom: 1rem;">Active Weekly Timetable</h3><div class="table-container"><table>
         <thead><tr><th>Day</th><th>Classes</th></tr></thead>
@@ -387,16 +441,7 @@ function renderSchedule(m) {
         </tbody>
     </table></div></div>`; 
 }
-function renderCourses(m) { 
-    const sem = appState.semesters.find(s => s.id === appState.currentSemesterId);
-    m.innerHTML = `<div class="stats-grid">
-        ${sem.courses.length ? sem.courses.map(c => `
-        <div class="glass-card">
-            <h3 style="margin-bottom: 5px;">${c.title}</h3>
-            <p style="color:var(--text-muted); font-size: 0.9rem;"><i class="fas fa-user-tie"></i> ${c.instructor}</p>
-        </div>`).join('') : '<div class="glass-card"><p>No courses registered.</p></div>'}
-    </div>`; 
-}
+
 function renderAssignments(m) { 
     m.innerHTML = `<div class="glass-card"><h3 style="margin-bottom: 1rem;">Upcoming Tasks</h3><p style="color:var(--text-muted)">No upcoming deadlines detected in system.</p></div>`; 
 }
