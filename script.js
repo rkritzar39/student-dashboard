@@ -1,151 +1,138 @@
 /**
- * NEXUS LMS - CORE ENGINE
- * Built for persistence and scalability.
+ * NEXUS LMS V4 - CORE JAVASCRIPT
  */
 
-// 1. GLOBAL APP STATE
-let appState = {
-    role: 'student', // 'student' or 'admin'
+// 1. DATA PERSISTENCE & INITIAL STATE
+const STORAGE_KEY = "NEXUS_LMS_PRO_STATE";
+
+const DEFAULT_STATE = {
+    role: 'student',
     currentSemesterId: 'f24',
     semesters: [
         {
             id: 'f24',
             name: 'Fall 2024',
-            year: 2024,
             courses: [
                 {
                     id: 'cs101',
-                    title: 'Advanced Algorithms',
-                    instructor: 'Dr. Sarah Smith',
-                    weights: { homework: 40, quiz: 20, exam: 30, participation: 10 },
+                    title: 'Advanced Web Architecture',
+                    instructor: 'Dr. Evelyn Carter',
+                    weights: { homework: 40, quiz: 20, exam: 40 },
                     assignments: [
-                        { id: 1, title: 'Big O Notation Lab', category: 'homework', score: 95, total: 100, due: '2024-09-15' },
-                        { id: 2, title: 'Dynamic Programming Quiz', category: 'quiz', score: 82, total: 100, due: '2024-10-01' },
-                        { id: 3, title: 'Midterm Project', category: 'exam', score: 91, total: 100, due: '2024-10-20' }
+                        { id: 1, title: 'Modular JS Lab', category: 'homework', score: 95, total: 100 },
+                        { id: 2, title: 'Unit 1 Architecture Quiz', category: 'quiz', score: 82, total: 100 }
                     ]
                 },
                 {
-                    id: 'ds202',
-                    title: 'Database Architecture',
-                    instructor: 'Prof. James Miller',
-                    weights: { homework: 30, quiz: 20, exam: 40, participation: 10 },
+                    id: 'ma202',
+                    title: 'Discrete Mathematics',
+                    instructor: 'Prof. Alan Turing',
+                    weights: { homework: 30, quiz: 30, exam: 40 },
                     assignments: [
-                        { id: 4, title: 'SQL Normalization', category: 'homework', score: 100, total: 100, due: '2024-09-10' },
-                        { id: 5, title: 'Indexing Efficiency', category: 'homework', score: 75, total: 100, due: '2024-09-25' }
+                        { id: 3, title: 'Set Theory Problems', category: 'homework', score: 100, total: 100 }
                     ]
                 }
             ]
         },
-        {
-            id: 's25',
-            name: 'Spring 2025',
-            year: 2025,
-            courses: []
-        }
+        { id: 's25', name: 'Spring 2025', courses: [] }
     ],
     announcements: [
-        { id: 1, date: '2024-09-01', title: 'Welcome to Fall 2024', content: 'Ensure you review the syllabus for all courses.' }
+        { id: 1, title: 'Fall Registration Open', date: 'Oct 24, 2024', content: 'Ensure you meet with your advisor before the 30th.' }
     ],
     schedule: [
-        { day: 'Monday', classes: [{ time: '10:00 AM', course: 'Advanced Algorithms' }] },
-        { day: 'Wednesday', classes: [{ time: '10:00 AM', course: 'Advanced Algorithms' }] },
-        { day: 'Tuesday', classes: [{ time: '02:00 PM', course: 'Database Architecture' }] }
+        { day: 'Monday', classes: [{ time: '10:00 AM', course: 'Advanced Web Architecture' }] },
+        { day: 'Tuesday', classes: [{ time: '02:00 PM', course: 'Discrete Mathematics' }] }
     ]
 };
 
-// --- INITIALIZATION ---
-document.addEventListener('DOMContentLoaded', () => {
-    loadSemesterOptions();
-    updateClock();
-    setInterval(updateClock, 1000);
-    navigate('dashboard');
-});
+let appState = JSON.parse(localStorage.getItem(STORAGE_KEY)) || DEFAULT_STATE;
 
-// --- CORE UTILITIES ---
-
-function navigate(view) {
-    const mount = document.getElementById('content-mount');
-    const title = document.getElementById('view-title');
-    
-    // Update Sidebar UI
-    document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
-    document.querySelector(`[data-view="${view}"]`).classList.add('active');
-
-    // SPA Router
-    switch(view) {
-        case 'dashboard': renderDashboard(mount, title); break;
-        case 'courses': renderCourses(mount, title); break;
-        case 'assignments': renderAssignments(mount, title); break;
-        case 'grades': renderGrades(mount, title); break;
-        case 'schedule': renderSchedule(mount, title); break;
-        case 'announcements': renderAnnouncements(mount, title); break;
-        case 'admin': renderAdmin(mount, title); break;
-    }
+// 2. CORE UTILITIES
+function saveState() {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(appState));
 }
 
 function calculateCourseGrade(course) {
     if (!course.assignments.length) return 0;
-
     let weightedSum = 0;
-    const categories = ['homework', 'quiz', 'exam', 'participation'];
+    let weightTotalUsed = 0;
 
-    categories.forEach(cat => {
-        const catAssignments = course.assignments.filter(a => a.category === cat);
-        if (catAssignments.length > 0) {
-            const avg = catAssignments.reduce((acc, curr) => acc + (curr.score / curr.total), 0) / catAssignments.length;
+    const cats = Object.keys(course.weights);
+    cats.forEach(cat => {
+        const catAsgns = course.assignments.filter(a => a.category === cat);
+        if (catAsgns.length > 0) {
+            const avg = catAsgns.reduce((sum, a) => sum + (a.score / a.total), 0) / catAsgns.length;
             weightedSum += avg * course.weights[cat];
+            weightTotalUsed += course.weights[cat];
         }
     });
-    return weightedSum.toFixed(2);
+
+    const final = weightTotalUsed > 0 ? (weightedSum / weightTotalUsed) * 100 : 0;
+    return final.toFixed(1);
 }
 
-function calculateGPA() {
-    const semester = appState.semesters.find(s => s.id === appState.currentSemesterId);
-    if (!semester.courses.length) return "0.00";
+function calculateSemesterGPA() {
+    const sem = appState.semesters.find(s => s.id === appState.currentSemesterId);
+    if (!sem || !sem.courses.length) return "0.00";
+    const totalGrades = sem.courses.reduce((sum, c) => sum + parseFloat(calculateCourseGrade(c)), 0);
+    const avg = totalGrades / sem.courses.length;
+    return ((avg / 100) * 4).toFixed(2);
+}
 
-    const totalGrade = semester.courses.reduce((acc, c) => acc + parseFloat(calculateCourseGrade(c)), 0);
-    const avgPercent = totalGrade / semester.courses.length;
+// 3. NAVIGATION & ROUTING
+function navigate(view) {
+    const mount = document.getElementById('mount');
+    const indicator = document.getElementById('view-indicator');
     
-    // Simple 4.0 scale conversion
-    return ((avgPercent / 100) * 4).toFixed(2);
+    // Update Sidebar Active State
+    document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+    document.querySelector(`[data-view="${view}"]`).classList.add('active');
+    indicator.innerText = view.charAt(0).toUpperCase() + view.slice(1);
+
+    switch(view) {
+        case 'dashboard': renderDashboard(mount); break;
+        case 'courses': renderCourses(mount); break;
+        case 'assignments': renderAssignments(mount); break;
+        case 'grades': renderGrades(mount); break;
+        case 'schedule': renderSchedule(mount); break;
+        case 'admin': renderAdmin(mount); break;
+    }
 }
 
-// --- RENDERING FUNCTIONS ---
-
-function renderDashboard(mount, title) {
-    title.innerText = "Student Dashboard";
-    const gpa = calculateGPA();
-    const semester = appState.semesters.find(s => s.id === appState.currentSemesterId);
+// 4. RENDERING VIEWS
+function renderDashboard(mount) {
+    const gpa = calculateSemesterGPA();
+    const sem = appState.semesters.find(s => s.id === appState.currentSemesterId);
 
     mount.innerHTML = `
-        <div class="dashboard-grid">
+        <div class="stats-grid">
             <div class="glass-card">
-                <h3>Semester GPA</h3>
-                <h1 style="font-size: 3rem; color: var(--accent);">${gpa}</h1>
-                <p style="color: var(--text-muted)">Current Academic Standing</p>
+                <p class="text-muted">Academic GPA</p>
+                <div class="stat-val">${gpa}</div>
+                <div style="color:var(--success); font-size: 0.8rem;"><i class="fas fa-arrow-up"></i> In Good Standing</div>
             </div>
             <div class="glass-card">
-                <h3>Active Courses</h3>
-                <h1>${semester.courses.length}</h1>
-                <p style="color: var(--text-muted)">Currently Enrolled</p>
+                <p class="text-muted">Courses Enrolled</p>
+                <div class="stat-val">${sem.courses.length}</div>
+                <p class="text-dim">Total Credits: ${sem.courses.length * 3}</p>
             </div>
             <div class="glass-card">
-                <h3>Recent Announcements</h3>
-                <p>${appState.announcements[0].title}</p>
-                <button class="btn btn-primary" style="margin-top:10px" onclick="navigate('announcements')">View All</button>
+                <p class="text-muted">Pending Tasks</p>
+                <div class="stat-val">0</div>
+                <p class="text-dim">All caught up!</p>
             </div>
         </div>
-        <div class="glass-card" style="margin-top: 1.5rem;">
-            <h3>Course Progress Overview</h3>
+        <div class="glass-card">
+            <h3>Recent Grade Activity</h3>
             <div class="table-container">
-                <table class="data-table">
+                <table>
                     <thead><tr><th>Course</th><th>Instructor</th><th>Grade</th></tr></thead>
                     <tbody>
-                        ${semester.courses.map(c => `
+                        ${sem.courses.map(c => `
                             <tr>
-                                <td>${c.title}</td>
+                                <td><strong>${c.title}</strong></td>
                                 <td>${c.instructor}</td>
-                                <td><strong>${calculateCourseGrade(c)}%</strong></td>
+                                <td style="color:var(--accent); font-weight:bold">${calculateCourseGrade(c)}%</td>
                             </tr>
                         `).join('')}
                     </tbody>
@@ -155,192 +142,166 @@ function renderDashboard(mount, title) {
     `;
 }
 
-function renderGrades(mount, title) {
-    title.innerText = "Detailed Gradebook";
-    const semester = appState.semesters.find(s => s.id === appState.currentSemesterId);
-
-    mount.innerHTML = semester.courses.map(course => `
-        <div class="glass-card" style="margin-bottom: 2rem;">
-            <div style="display:flex; justify-content:space-between; align-items:center">
+function renderGrades(mount) {
+    const sem = appState.semesters.find(s => s.id === appState.currentSemesterId);
+    mount.innerHTML = sem.courses.map(course => `
+        <div class="glass-card" style="margin-bottom:1.5rem">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem">
                 <h2>${course.title}</h2>
-                <h2 style="color: var(--accent)">${calculateCourseGrade(course)}%</h2>
+                <span class="btn btn-secondary">${calculateCourseGrade(course)}%</span>
             </div>
-            <table class="data-table">
-                <thead><tr><th>Assignment</th><th>Category</th><th>Weight</th><th>Score</th></tr></thead>
-                <tbody>
-                    ${course.assignments.map(a => `
-                        <tr>
-                            <td>${a.title}</td>
-                            <td>${a.category.toUpperCase()}</td>
-                            <td>${course.weights[a.category]}%</td>
-                            <td>${a.score}/${a.total}</td>
-                        </tr>
-                    `).join('')}
-                </tbody>
-            </table>
+            <div class="table-container">
+                <table>
+                    <thead><tr><th>Assignment</th><th>Category</th><th>Score</th><th>Impact</th></tr></thead>
+                    <tbody>
+                        ${course.assignments.map(a => `
+                            <tr>
+                                <td>${a.title}</td>
+                                <td>${a.category.toUpperCase()}</td>
+                                <td>${a.score} / ${a.total}</td>
+                                <td>${course.weights[a.category]}% weight</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>
         </div>
-    `).join('') || '<p>No courses found for this semester.</p>';
+    `).join('') || `<h3>No grades available for this semester.</h3>`;
 }
 
-function renderAdmin(mount, title) {
-    if (appState.role !== 'admin') {
-        mount.innerHTML = `<h3>Access Denied. Please login as admin.</h3>`;
-        return;
-    }
-    title.innerText = "LMS Administrator Panel";
-    const semester = appState.semesters.find(s => s.id === appState.currentSemesterId);
+function renderAdmin(mount) {
+    if (appState.role !== 'admin') return mount.innerHTML = `<h3>Admin Authentication Required</h3>`;
+    const sem = appState.semesters.find(s => s.id === appState.currentSemesterId);
 
     mount.innerHTML = `
-        <div class="glass-card" style="margin-bottom: 2rem;">
-            <h3>Manage Courses in ${semester.name}</h3>
-            <div style="display:flex; gap:10px; margin: 1rem 0;">
-                <input type="text" id="new-course-title" placeholder="Course Title">
-                <input type="text" id="new-course-instructor" placeholder="Instructor Name">
-                <button class="btn btn-primary" onclick="adminAddCourse()">Add Course</button>
+        <div class="glass-card" style="margin-bottom:2rem">
+            <h3>Add New Course to ${sem.name}</h3>
+            <div style="display:grid; grid-template-columns:1fr 1fr auto; gap:10px; margin-top:1rem">
+                <input id="new-c-title" placeholder="Course Name">
+                <input id="new-c-instr" placeholder="Instructor Name">
+                <button class="btn btn-primary" onclick="adminAddCourse()">Add</button>
             </div>
-            <table class="data-table">
-                <thead><tr><th>Course ID</th><th>Instructor</th><th>Actions</th></tr></thead>
-                <tbody>
-                    ${semester.courses.map(c => `
-                        <tr>
-                            <td>${c.title}</td>
-                            <td>${c.instructor}</td>
-                            <td><button class="btn btn-danger" onclick="adminDeleteCourse('${c.id}')">Delete</button></td>
-                        </tr>
-                    `).join('')}
-                </tbody>
-            </table>
         </div>
-
         <div class="glass-card">
-            <h3>Add New Assignment</h3>
-            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px; margin-top:1rem;">
-                <select id="asgn-course-select">
-                    ${semester.courses.map(c => `<option value="${c.id}">${c.title}</option>`)}
-                </select>
-                <input type="text" id="asgn-title" placeholder="Assignment Title">
-                <select id="asgn-category">
+            <h3>Post Final Assignment Score</h3>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px; margin-top:1rem">
+                <select id="asgn-course-sel">${sem.courses.map(c => `<option value="${c.id}">${c.title}</option>`)}</select>
+                <input id="asgn-name" placeholder="Assignment Name">
+                <select id="asgn-cat">
                     <option value="homework">Homework</option>
                     <option value="quiz">Quiz</option>
                     <option value="exam">Exam</option>
-                    <option value="participation">Participation</option>
                 </select>
-                <input type="number" id="asgn-score" placeholder="Points Earned">
-                <input type="number" id="asgn-total" placeholder="Total Points">
-                <button class="btn btn-primary" onclick="adminAddAssignment()">Submit Grade</button>
+                <div style="display:flex; gap:10px">
+                    <input type="number" id="asgn-score" placeholder="Earned">
+                    <input type="number" id="asgn-total" placeholder="Total">
+                </div>
             </div>
+            <button class="btn btn-primary" style="margin-top:1.5rem" onclick="adminAddAssignment()">Post Score</button>
         </div>
     `;
 }
 
-// --- ADMIN ACTIONS (DATA MUTATION) ---
-
+// 5. DATA MUTATIONS (ADMIN ONLY)
 function adminAddCourse() {
-    const title = document.getElementById('new-course-title').value;
-    const instructor = document.getElementById('new-course-instructor').value;
-    if (!title) return;
+    const title = document.getElementById('new-c-title').value;
+    const instructor = document.getElementById('new-c-instr').value;
+    if (!title) return alert("Course name required");
 
-    const semester = appState.semesters.find(s => s.id === appState.currentSemesterId);
-    semester.courses.push({
+    const sem = appState.semesters.find(s => s.id === appState.currentSemesterId);
+    sem.courses.push({
         id: Date.now().toString(),
         title,
         instructor,
-        weights: { homework: 40, quiz: 20, exam: 30, participation: 10 },
+        weights: { homework: 40, quiz: 20, exam: 40 },
         assignments: []
     });
-    renderAdmin(document.getElementById('content-mount'), document.getElementById('view-title'));
+    saveState();
+    renderAdmin(document.getElementById('mount'));
 }
 
 function adminAddAssignment() {
-    const cid = document.getElementById('asgn-course-select').value;
-    const semester = appState.semesters.find(s => s.id === appState.currentSemesterId);
-    const course = semester.courses.find(c => c.id === cid);
+    const cid = document.getElementById('asgn-course-sel').value;
+    const sem = appState.semesters.find(s => s.id === appState.currentSemesterId);
+    const course = sem.courses.find(c => c.id === cid);
 
     course.assignments.push({
         id: Date.now(),
-        title: document.getElementById('asgn-title').value,
-        category: document.getElementById('asgn-category').value,
-        score: parseInt(document.getElementById('asgn-score').value),
-        total: parseInt(document.getElementById('asgn-total').value),
-        due: new Date().toISOString().split('T')[0]
+        title: document.getElementById('asgn-name').value,
+        category: document.getElementById('asgn-cat').value,
+        score: parseFloat(document.getElementById('asgn-score').value),
+        total: parseFloat(document.getElementById('asgn-total').value)
     });
-    renderAdmin(document.getElementById('content-mount'), document.getElementById('view-title'));
+    saveState();
+    alert("Grade successfully posted.");
+    renderAdmin(document.getElementById('mount'));
 }
 
-function adminDeleteCourse(id) {
-    const semester = appState.semesters.find(s => s.id === appState.currentSemesterId);
-    semester.courses = semester.courses.filter(c => c.id !== id);
-    renderAdmin(document.getElementById('content-mount'), document.getElementById('view-title'));
-}
-
-// --- AI ASSISTANT MODULE ---
-
-function sendAIMessage() {
-    const input = document.getElementById('ai-input');
-    const msgBox = document.getElementById('ai-messages');
+// 6. AI INTERFACE
+function askAI() {
+    const input = document.getElementById('ai-query');
+    const area = document.getElementById('chat-area');
     if (!input.value) return;
 
-    // User Message
-    msgBox.innerHTML += `<div class="msg user">${input.value}</div>`;
-    const userText = input.value.toLowerCase();
+    area.innerHTML += `<div class="user-msg">${input.value}</div>`;
+    const query = input.value.toLowerCase();
     input.value = "";
 
-    // Simulated Gemini Response (Data Aware)
     setTimeout(() => {
-        let response = "I'm not sure about that. Can you ask about your GPA or courses?";
+        let reply = "I can't access that specific module yet. Try asking about your GPA!";
+        if (query.includes('gpa')) reply = `Your current GPA for the ${appState.currentSemesterId} semester is ${calculateSemesterGPA()}. You are doing excellent!`;
+        if (query.includes('grade')) reply = "You currently have A's and B's in all courses. Check the Grades tab for category breakdowns.";
         
-        if (userText.includes("gpa")) {
-            response = `Your current GPA for this semester is ${calculateGPA()}.`;
-        } else if (userText.includes("assignment")) {
-            const semester = appState.semesters.find(s => s.id === appState.currentSemesterId);
-            const count = semester.courses.reduce((acc, c) => acc + c.assignments.length, 0);
-            response = `You have completed ${count} assignments this semester across ${semester.courses.length} courses.`;
-        } else if (userText.includes("grade") && appState.role === 'admin') {
-            response = "As an admin, you can navigate to the Admin Panel to update assignment scores.";
-        } else if (userText.includes("failing")) {
-            response = "Checking your grades... All current courses are above 70%. You're in good standing!";
-        }
-
-        msgBox.innerHTML += `<div class="msg bot">${response}</div>`;
-        msgBox.scrollTop = msgBox.scrollHeight;
+        area.innerHTML += `<div class="ai-msg">${reply}</div>`;
+        area.scrollTop = area.scrollHeight;
     }, 600);
 }
 
-// --- MODAL & UI HELPERS ---
-
-function openAdminModal() { document.getElementById('admin-auth-modal').classList.add('open'); }
-function closeAdminModal() { document.getElementById('admin-auth-modal').classList.remove('open'); }
-
+// 7. UI HELPERS
 function verifyAdmin() {
-    const pass = document.getElementById('admin-password').value;
+    const pass = document.getElementById('admin-pass').value;
     if (pass === "1234") {
         appState.role = 'admin';
         document.getElementById('admin-nav').classList.remove('hidden');
-        document.getElementById('admin-status-btn').classList.add('admin-mode-on');
-        document.getElementById('admin-status-btn').innerHTML = `<i class="fas fa-unlock"></i> <span>Admin Active</span>`;
+        document.getElementById('admin-trigger').classList.add('admin-unlocked');
+        document.getElementById('admin-trigger').innerHTML = `<i class="fas fa-unlock"></i> <span>Admin Active</span>`;
         closeAdminModal();
-        alert("Admin mode enabled. You can now mutate LMS data.");
+        navigate('admin');
     } else {
-        alert("Invalid Passcode.");
+        alert("Invalid Access Code");
     }
 }
 
-function loadSemesterOptions() {
-    const sel = document.getElementById('global-semester-select');
-    sel.innerHTML = appState.semesters.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
-}
-
-function changeSemester(id) {
+function switchSemester(id) {
     appState.currentSemesterId = id;
     navigate('dashboard');
 }
 
-function toggleSidebar() { document.getElementById('sidebar').classList.toggle('mobile-open'); }
-function toggleAIChat() { document.getElementById('ai-chat-widget').classList.toggle('open'); }
-function updateClock() { document.getElementById('current-clock').innerText = new Date().toLocaleTimeString(); }
+function initSelectors() {
+    const sel = document.getElementById('semester-selector');
+    sel.innerHTML = appState.semesters.map(s => `<option value="${s.id}" ${s.id === appState.currentSemesterId ? 'selected' : ''}>${s.name}</option>`).join('');
+}
 
-// Fallback for missing views
-function renderSchedule(m, t) { t.innerText = "Weekly Schedule"; m.innerHTML = `<div class="glass-card"><h3>Monday</h3><p>10:00 AM - Advanced Algorithms</p></div>`; }
-function renderCourses(m, t) { t.innerText = "My Enrolled Courses"; m.innerHTML = `<div class="dashboard-grid">${appState.semesters.find(s => s.id === appState.currentSemesterId).courses.map(c => `<div class="glass-card"><h3>${c.title}</h3><p>${c.instructor}</p></div>`).join('')}</div>`; }
-function renderAssignments(m, t) { t.innerText = "Assignment Tracker"; m.innerHTML = `<div class="glass-card"><h3>Pending Items</h3><p>No immediate deadlines detected.</p></div>`; }
-function renderAnnouncements(m, t) { t.innerText = "Announcements"; m.innerHTML = appState.announcements.map(a => `<div class="glass-card"><h3>${a.title}</h3><p>${a.content}</p></div>`).join(''); }
+function openAdminModal() { document.getElementById('admin-modal').classList.add('open'); }
+function closeAdminModal() { document.getElementById('admin-modal').classList.remove('open'); }
+function toggleSidebar() { document.getElementById('sidebar').classList.toggle('mobile-open'); }
+function toggleAI() { 
+    document.getElementById('ai-hub').classList.toggle('open');
+    document.getElementById('ai-icon').classList.toggle('fa-chevron-up');
+    document.getElementById('ai-icon').classList.toggle('fa-chevron-down');
+}
+function updateClock() { document.getElementById('time-display').innerText = new Date().toLocaleTimeString(); }
+
+// Simple Render for missing views
+function renderSchedule(m) { 
+    m.innerHTML = `<div class="glass-card"><h3>Active Weekly Timetable</h3><div class="table-container"><table>${appState.schedule.map(d => `<tr><td>${d.day}</td><td>${d.classes.map(c => `${c.time} - ${c.course}`).join('<br>')}</td></tr>`).join('')}</table></div></div>`; 
+}
+function renderCourses(m) { 
+    const sem = appState.semesters.find(s => s.id === appState.currentSemesterId);
+    m.innerHTML = `<div class="stats-grid">${sem.courses.map(c => `<div class="glass-card"><h3>${c.title}</h3><p class="text-dim">${c.instructor}</p></div>`).join('')}</div>`; 
+}
+function renderAssignments(m) { m.innerHTML = `<div class="glass-card"><h3>Upcoming Tasks</h3><p class="text-dim">No upcoming deadlines detected in system.</p></div>`; }
+
+// First Init
+initSelectors();
+navigate('dashboard');
