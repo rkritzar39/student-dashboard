@@ -4,7 +4,8 @@
  * Full script.js combining core app state, view renderers, admin mutation APIs,
  * and the Gradebook integration module (draft grades, weighted/total/none modes).
  *
- * This version enforces admin-only mutations and improves UI affordances.
+ * This version enforces admin-only mutations, shows admin-only controls only in admin portal,
+ * and provides a clear Admin Log out button.
  */
 
 /* =========================
@@ -84,7 +85,6 @@ function commitSystemState() {
 
 /**
  * requireAdmin - returns true if current user is admin, otherwise shows alert and returns false.
- * Use at the top of any mutation that must be admin-only.
  */
 function requireAdmin(actionLabel = 'perform this action') {
   if (appState.role !== 'admin') {
@@ -95,10 +95,15 @@ function requireAdmin(actionLabel = 'perform this action') {
 }
 
 /**
+ * setAdminModeClass - toggles body.admin-mode for CSS visibility of .admin-only elements.
+ */
+function setAdminModeClass() {
+  if (appState.role === 'admin') document.body.classList.add('admin-mode');
+  else document.body.classList.remove('admin-mode');
+}
+
+/**
  * updateAdminUI - toggles admin-only UI affordances across the app.
- * - Shows/hides admin nav
- * - Adds disabled visuals to admin-only controls
- * - Updates admin trigger visual
  */
 function updateAdminUI() {
   // Admin nav visibility
@@ -114,6 +119,10 @@ function updateAdminUI() {
     if (appState.role === 'admin') adminTrigger.classList.add('admin-unlocked');
     else adminTrigger.classList.remove('admin-unlocked');
   }
+
+  // Compact logout visibility
+  const compactLogout = document.getElementById('admin-logout-compact');
+  if (compactLogout) compactLogout.style.display = (appState.role === 'admin') ? 'inline-flex' : 'none';
 
   // Disable gradebook settings button for non-admins
   const gbSettingsBtn = document.querySelector('button[onclick="toggleGradebookModal()"]');
@@ -131,27 +140,8 @@ function updateAdminUI() {
     }
   }
 
-  // Disable mutation buttons inside #mount (if present)
-  document.querySelectorAll('#mount .btn').forEach(btn => {
-    const onclick = btn.getAttribute('onclick') || '';
-    const adminOnlyActions = [
-      'openAddAssignment', 'saveAssignment', 'adminAddCourse', 'adminAddAssignment', 'adminAddSemester',
-      'adminPostAnnouncement', 'adminAddSchedule', 'adminUpdateAttendance', 'markAssignmentMissing',
-      'returnDraftForAssignment', 'deleteAssignmentFromCourse'
-    ];
-    const isAdminAction = adminOnlyActions.some(a => onclick.includes(a));
-    if (isAdminAction) {
-      if (appState.role !== 'admin') {
-        btn.classList.add('disabled-control');
-        btn.setAttribute('aria-disabled', 'true');
-        btn.disabled = true;
-      } else {
-        btn.classList.remove('disabled-control');
-        btn.removeAttribute('aria-disabled');
-        btn.disabled = false;
-      }
-    }
-  });
+  // Ensure body class is set
+  setAdminModeClass();
 }
 
 /**
@@ -462,6 +452,13 @@ function renderAdmin(mount) {
   const selectionOptions = targetTerm && targetTerm.courses.length ? targetTerm.courses.map(c => `<option value="${c.id}">${c.title}</option>`).join('') : `<option disabled>No courses live in current matrix target</option>`;
 
   mount.innerHTML = `
+    <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:16px;">
+      <h2 style="font-weight:800;">Admin Command Control</h2>
+      <div style="display:flex; gap:8px;">
+        <button id="admin-logout-btn" class="btn btn-secondary" onclick="adminLogout()" title="Sign out of admin mode"><i class="fas fa-sign-out-alt"></i> Log out of Admin</button>
+      </div>
+    </div>
+
     <div class="admin-grid">
       <div style="display: flex; flex-direction: column; gap: 2rem;">
         <div class="glass-card" style="border-top:3px solid var(--neon-amber)">
@@ -683,8 +680,8 @@ function adminUpdateAttendance_guarded() {
     appState.gradebook = {
       settings: {
         draftEnabled: true,
-        draftPercent: 0,        // percent 0-100
-        calcMode: 'weighted',   // 'none' | 'weighted' | 'total'
+        draftPercent: 0,
+        calcMode: 'weighted',
         showOverall: false
       },
       categories: ['homework', 'exam', 'project', 'quiz', 'participation'],
@@ -696,106 +693,13 @@ function adminUpdateAttendance_guarded() {
   // Insert gradebook HTML templates if not present
   function ensureGradebookHTML() {
     if (document.getElementById('gradebook-modal')) return;
-    const html = `
-      <!-- Gradebook Settings Modal -->
-      <div id="gradebook-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="gradebook-title" hidden>
-        <div class="modal-content glass-card">
-          <div class="modal-header">
-            <h2 id="gradebook-title"><i class="fas fa-book-open"></i> Gradebook Settings</h2>
-            <button class="close-btn" onclick="toggleGradebookModal()" aria-label="Close Gradebook Settings">&times;</button>
-          </div>
-          <div class="modal-body">
-            <section class="settings-section">
-              <h3>Draft Grade for Missing Assignments</h3>
-              <label class="row"><span>Apply draft grade to missing assignments</span><input id="gb-draft-enabled" type="checkbox" /></label>
-              <label class="row"><span>Draft grade percentage</span><input id="gb-draft-percent" type="number" min="0" max="100" value="0" /> %</label>
-              <p class="muted">Draft grades are hidden from students until returned.</p>
-            </section>
-
-            <section class="settings-section">
-              <h3>Overall Grade Calculation</h3>
-              <label class="row"><input name="gb-calc-mode" type="radio" value="none" /> <span>No overall grade</span></label>
-              <label class="row"><input name="gb-calc-mode" type="radio" value="weighted" /> <span>Weighted by category</span></label>
-              <label class="row"><input name="gb-calc-mode" type="radio" value="total" /> <span>Total points</span></label>
-              <label class="row"><span>Show overall grade to students</span><input id="gb-show-overall" type="checkbox" /></label>
-            </section>
-
-            <section class="settings-section">
-              <h3>Grading Periods</h3>
-              <div id="gb-period-warning" class="warning" hidden></div>
-              <p class="small-muted">Grading periods are your existing semesters; you can create up to 12 terms in Admin.</p>
-            </section>
-
-            <section class="settings-actions">
-              <button class="btn btn-primary" onclick="saveGradebookSettings_guarded()">Save Settings</button>
-              <button class="btn" onclick="closeGradebookModal()">Cancel</button>
-            </section>
-          </div>
-        </div>
-      </div>
-
-      <!-- Gradebook Template -->
-      <template id="gradebook-template">
-        <div class="gradebook-root">
-          <div class="gradebook-header">
-            <h2>Gradebook Matrix</h2>
-            <div class="actions">
-              <button class="btn" onclick="toggleGradebookModal()">Settings</button>
-              <button class="btn" onclick="exportGradebook()">Export (JSON)</button>
-            </div>
-          </div>
-
-          <div class="gradebook-controls">
-            <label>Term
-              <select id="gb-term-select"></select>
-            </label>
-            <label>Course
-              <select id="gb-course-select"></select>
-            </label>
-            <button class="btn" onclick="openAddAssignment()">Add Assignment</button>
-          </div>
-
-          <div id="assignments-table-wrap"></div>
-        </div>
-      </template>
-
-      <!-- Add Assignment Modal -->
-      <div id="assignment-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="assignment-title" hidden>
-        <div class="modal-content glass-card">
-          <div class="modal-header">
-            <h2 id="assignment-title">Add Assignment</h2>
-            <button class="close-btn" onclick="closeAssignmentModal()" aria-label="Close">&times;</button>
-          </div>
-          <div class="modal-body">
-            <label>Title <input id="gb-assign-title" /></label>
-            <label>Category
-              <select id="gb-assign-category"></select>
-            </label>
-            <label>Due date <input id="gb-assign-due" type="date" /></label>
-            <label>Points possible <input id="gb-assign-points" type="number" min="0" value="100" /></label>
-            <label>Status
-              <select id="gb-assign-status">
-                <option value="normal">Normal (counts)</option>
-                <option value="missing">Missing</option>
-                <option value="excused">Excused</option>
-                <option value="late">Late</option>
-              </select>
-            </label>
-            <div class="modal-actions">
-              <button class="btn btn-primary" onclick="saveAssignment_guarded()">Save</button>
-              <button class="btn" onclick="closeAssignmentModal()">Cancel</button>
-            </div>
-          </div>
-        </div>
-      </div>
-    `;
-    document.body.insertAdjacentHTML('beforeend', html);
+    // Templates are already included in index.html; this is a no-op if present.
   }
-
   ensureGradebookHTML();
 
   // Modal toggles
   window.toggleGradebookModal = function () {
+    if (appState.role !== 'admin') { showToast('Only administrators can change gradebook settings.'); return; }
     const modal = document.getElementById('gradebook-modal');
     if (!modal) return;
     if (modal.hasAttribute('hidden')) {
@@ -886,9 +790,12 @@ function adminUpdateAttendance_guarded() {
         <td>${a.total || a.points || 0}</td>
         <td>${escapeHtml(status)}</td>
         <td>
-          <button class="btn" data-action="mark-missing" data-id="${a.id}">Mark Missing</button>
-          <button class="btn" data-action="return-draft" data-id="${a.id}">Return Draft</button>
-          <button class="btn" data-action="delete-assignment" data-id="${a.id}">Delete</button>
+          ${ appState.role === 'admin'
+            ? `<button class="btn" data-action="mark-missing" data-id="${a.id}">Mark Missing</button>
+               <button class="btn" data-action="return-draft" data-id="${a.id}">Return Draft</button>
+               <button class="btn" data-action="delete-assignment" data-id="${a.id}">Delete</button>`
+            : `<span class="small-muted">Admin only</span>`
+          }
         </td>
       `;
       tbody.appendChild(tr);
@@ -915,6 +822,7 @@ function adminUpdateAttendance_guarded() {
 
   // Add / Save assignment modal (guarded)
   window.openAddAssignment = function () {
+    if (!requireAdmin('create assignments')) { showToast('Only administrators can add assignments.'); return; }
     const m = document.getElementById('assignment-modal');
     if (!m) return;
     const sel = document.getElementById('gb-assign-category');
@@ -1075,17 +983,38 @@ function adminUpdateAttendance_guarded() {
 })();
 
 /* =========================
-   10. LIGHTWEIGHT UI HELPERS & FALLBACKS
+   10. ADMIN LOGOUT HANDLER
+   ========================= */
+function adminLogout() {
+  if (!confirm('Sign out of admin mode and return to standard user view?')) return;
+  onRoleRevoked();
+
+  // Close admin-only modals if open
+  const gbModal = document.getElementById('gradebook-modal');
+  if (gbModal) { gbModal.setAttribute('hidden',''); gbModal.classList.remove('open'); }
+  const adminModal = document.getElementById('admin-modal');
+  if (adminModal) { adminModal.setAttribute('hidden',''); adminModal.classList.remove('open'); }
+
+  // If currently in admin view, navigate away
+  const indicator = document.getElementById('view-indicator');
+  if (indicator && indicator.innerText.toLowerCase().includes('admin')) navigate('dashboard');
+
+  // Update UI
+  updateAdminUI();
+  showToast('Signed out of admin mode.');
+}
+
+/* =========================
+   11. LIGHTWEIGHT UI HELPERS & FALLBACKS
    ========================= */
 
-// Minimal stubs for UI actions referenced in HTML but not defined above
 function openAdminModal() {
   const modal = document.getElementById('admin-modal');
-  if (modal) { modal.classList.add('open'); modal.style.display = 'flex'; }
+  if (modal) { modal.removeAttribute('hidden'); modal.classList.add('open'); modal.style.display = 'flex'; }
 }
 function closeAdminModal() {
   const modal = document.getElementById('admin-modal');
-  if (modal) { modal.classList.remove('open'); modal.style.display = 'none'; }
+  if (modal) { modal.setAttribute('hidden',''); modal.classList.remove('open'); modal.style.display = 'none'; }
 }
 function verifyAdmin() {
   const pass = document.getElementById('admin-pass')?.value;
@@ -1124,7 +1053,7 @@ function toggleAI() {
 }
 
 /* =========================
-   11. BOOTSTRAP: initial render
+   12. BOOTSTRAP: initial render
    ========================= */
 document.addEventListener('DOMContentLoaded', () => {
   // Populate semester selector in top nav
